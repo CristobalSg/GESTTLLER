@@ -7,7 +7,11 @@ type QuoteDetailCardProps = {
   quote?: QuoteWithRelations;
   onEditQuote: (quote: Quote) => void;
   onCreateQuote: () => void;
+  onDownloadPdf: () => void;
+  onSharePdf: () => void;
   onStatusChange: (quoteId: string, status: Quote["status"]) => void;
+  canSharePdf: boolean;
+  isPreparingPdf: boolean;
 };
 
 function formatMoney(value: number) {
@@ -19,6 +23,10 @@ function formatMoney(value: number) {
 }
 
 function formatDate(value: string) {
+  if (!value) {
+    return "Sin fecha definida";
+  }
+
   return new Intl.DateTimeFormat("es-CL", {
     dateStyle: "medium",
   }).format(new Date(value));
@@ -28,7 +36,11 @@ export function QuoteDetailCard({
   quote,
   onEditQuote,
   onCreateQuote,
+  onDownloadPdf,
+  onSharePdf,
   onStatusChange,
+  canSharePdf,
+  isPreparingPdf,
 }: QuoteDetailCardProps) {
   if (!quote) {
     return (
@@ -60,12 +72,30 @@ export function QuoteDetailCard({
               : "Presupuesto sin vehículo relacionado"}
           </h2>
           <p className="mt-2 text-sm leading-6 text-stone-600">
-            Vigente hasta {formatDate(quote.validUntil)}.
+            {quote.validUntil ? `Vigente hasta ${formatDate(quote.validUntil)}.` : "Sin fecha de vigencia definida."}
           </p>
         </div>
 
         <div className="flex flex-col items-stretch gap-3 sm:items-end">
           <QuoteStatusSelect value={quote.status} onChange={(status) => onStatusChange(quote.id, status)} />
+          <button
+            type="button"
+            onClick={onDownloadPdf}
+            disabled={isPreparingPdf}
+            className="inline-flex justify-center rounded-2xl bg-stone-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isPreparingPdf ? "Preparando PDF..." : "Descargar PDF"}
+          </button>
+          {canSharePdf ? (
+            <button
+              type="button"
+              onClick={onSharePdf}
+              disabled={isPreparingPdf}
+              className="inline-flex justify-center rounded-2xl border border-stone-300 bg-white px-4 py-3 text-sm font-semibold text-stone-800 transition hover:border-stone-400 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Compartir PDF
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => onEditQuote(quote)}

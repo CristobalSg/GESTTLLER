@@ -19,8 +19,8 @@ export default defineConfig({
         background_color: "#f5efe6",
         theme_color: "#1c1917",
         icons: [
-          { src: "/icons/icon-192x192.png", sizes: "192x192", type: "image/png" },
-          { src: "/icons/icon-512x512.png", sizes: "512x512", type: "image/png" },
+          { src: "/icons/icon-192x192.webp", sizes: "192x192", type: "image/webp" },
+          { src: "/icons/icon-512x512.webp", sizes: "512x512", type: "image/webp" },
         ],
       },
     }) as unknown as PluginOption,

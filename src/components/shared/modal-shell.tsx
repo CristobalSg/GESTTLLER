@@ -1,4 +1,5 @@
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 type ModalShellProps = {
   children: ReactNode;
@@ -11,7 +12,11 @@ export function ModalShell({
   maxWidthClassName = "max-w-2xl",
   onClose,
 }: ModalShellProps) {
+  const [isMounted, setIsMounted] = useState(false);
+
   useEffect(() => {
+    setIsMounted(true);
+
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
@@ -20,7 +25,11 @@ export function ModalShell({
     };
   }, []);
 
-  return (
+  if (!isMounted || typeof document === "undefined") {
+    return null;
+  }
+
+  return createPortal(
     <div className="fixed inset-0 z-40">
       <div
         aria-hidden="true"
@@ -46,6 +55,7 @@ export function ModalShell({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -33,10 +33,6 @@ function validateQuoteForm(values: QuoteFormValues): FormErrors {
     errors.vehicleId = "Selecciona un vehículo.";
   }
 
-  if (!values.validUntil) {
-    errors.validUntil = "Selecciona una fecha de validez.";
-  }
-
   const hasInvalidItem = values.items.some(
     (item) =>
       !item.description.trim() ||
@@ -217,14 +213,13 @@ export function QuoteForm({ mode, clients, vehicles, quote, onCancel, onSubmit }
 
         <div className="grid gap-4 md:grid-cols-2">
           <label className="block">
-            <span className="mb-2 block text-sm font-medium text-stone-700">Válido hasta</span>
+            <span className="mb-2 block text-sm font-medium text-stone-700">Válido hasta (opcional)</span>
             <input
               type="date"
               value={values.validUntil}
               onChange={(event) => updateField("validUntil", event.target.value)}
               className="w-full rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-amber-500 focus:bg-white"
             />
-            <FieldError message={errors.validUntil} />
           </label>
 
           <label className="block">

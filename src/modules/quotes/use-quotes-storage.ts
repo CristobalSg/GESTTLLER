@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { clientsMock, vehiclesMock } from "@/data/mocks";
+import { clientsMock, quotesMock, vehiclesMock } from "@/data/mocks";
 import type { Client, Quote, QuoteItem, QuoteStatus, Vehicle } from "@/types";
 
 import type { QuoteFormValues } from "./quote-form.types";
@@ -56,6 +56,7 @@ function buildQuoteItems(values: QuoteFormValues): QuoteItem[] {
 function buildQuotePayload(values: QuoteFormValues, currentQuote?: Quote): Quote {
   const items = buildQuoteItems(values);
   const subtotal = items.reduce((sum, item) => sum + item.total, 0);
+  const validUntil = values.validUntil ? new Date(`${values.validUntil}T12:00:00.000Z`).toISOString() : "";
 
   return {
     id: currentQuote?.id ?? `quote-${crypto.randomUUID().slice(0, 8)}`,
@@ -67,7 +68,7 @@ function buildQuotePayload(values: QuoteFormValues, currentQuote?: Quote): Quote
     tax: 0,
     total: subtotal,
     currency: "CLP",
-    validUntil: new Date(`${values.validUntil}T12:00:00.000Z`).toISOString(),
+    validUntil,
     status: values.status,
     observations: values.observations.trim(),
     declinedWorkNotes: values.declinedWorkNotes.trim(),
@@ -76,7 +77,9 @@ function buildQuotePayload(values: QuoteFormValues, currentQuote?: Quote): Quote
 }
 
 export function useQuotesStorage() {
-  const [quotes, setQuotes] = useState<Quote[]>(() => readStoredCollection<Quote>(QUOTES_STORAGE_KEY, []));
+  const [quotes, setQuotes] = useState<Quote[]>(() =>
+    readStoredCollection<Quote>(QUOTES_STORAGE_KEY, quotesMock)
+  );
   const [clients, setClients] = useState<Client[]>(() =>
     readStoredCollection<Client>(CLIENTS_STORAGE_KEY, clientsMock)
   );

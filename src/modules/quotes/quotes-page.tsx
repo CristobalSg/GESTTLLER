@@ -1,24 +1,27 @@
 import { useEffect, useState } from "react";
 
+import { ModalShell } from "../../components/shared/modal-shell";
 import { PageShell } from "../../components/shared/page-shell";
 import type { Quote } from "../../types";
 import { QuoteDetailCard } from "./quote-detail-card";
 import { QuoteForm } from "./quote-form";
 import type { QuoteFormValues } from "./quote-form.types";
+import { useQuotePdfActions } from "./pdf/use-quote-pdf-actions";
 import { QuotesList } from "./quotes-list";
 import { useQuotesStorage } from "./use-quotes-storage";
 
-type PanelMode = "detail" | "create" | "edit";
+type ModalMode = "closed" | "detail" | "create" | "edit";
 
 export function QuotesPage() {
   const { clients, vehicles, quotesWithRelations, createQuote, updateQuote, updateQuoteStatus } =
     useQuotesStorage();
   const [selectedQuoteId, setSelectedQuoteId] = useState<string | undefined>(quotesWithRelations[0]?.id);
-  const [panelMode, setPanelMode] = useState<PanelMode>("detail");
+  const [modalMode, setModalMode] = useState<ModalMode>("closed");
   const [editingQuote, setEditingQuote] = useState<Quote | undefined>();
 
   const selectedQuote =
     quotesWithRelations.find((quote) => quote.id === selectedQuoteId) ?? quotesWithRelations[0];
+  const { canSharePdf, isPreparingPdf, handleDownloadPdf, handleSharePdf } = useQuotePdfActions(selectedQuote);
 
   useEffect(() => {
     if (!quotesWithRelations.length) {
@@ -36,25 +39,25 @@ export function QuotesPage() {
   function handleSelectQuote(quoteId: string) {
     setSelectedQuoteId(quoteId);
     setEditingQuote(undefined);
-    setPanelMode("detail");
+    setModalMode("detail");
   }
 
   function handleCreateQuote() {
     setEditingQuote(undefined);
-    setPanelMode("create");
+    setModalMode("create");
   }
 
   function handleEditQuote(quote: Quote) {
     setSelectedQuoteId(quote.id);
     setEditingQuote(quote);
-    setPanelMode("edit");
+    setModalMode("edit");
   }
 
   function handleCreateSubmit(values: QuoteFormValues) {
     const nextQuote = createQuote(values);
     setSelectedQuoteId(nextQuote.id);
     setEditingQuote(undefined);
-    setPanelMode("detail");
+    setModalMode("detail");
   }
 
   function handleEditSubmit(values: QuoteFormValues) {
@@ -69,12 +72,21 @@ export function QuotesPage() {
     }
 
     setEditingQuote(undefined);
-    setPanelMode("detail");
+    setModalMode("detail");
+  }
+
+  function handleCloseModal() {
+    setEditingQuote(undefined);
+    setModalMode("closed");
   }
 
   function handleCancelForm() {
-    setEditingQuote(undefined);
-    setPanelMode("detail");
+    if (editingQuote) {
+      setModalMode("detail");
+      return;
+    }
+
+    handleCloseModal();
   }
 
   return (
@@ -100,15 +112,17 @@ export function QuotesPage() {
         },
       ]}
     >
-      <div className="grid gap-6 xl:grid-cols-[minmax(340px,420px)_minmax(0,1fr)]">
+      <div>
         <QuotesList
           quotes={quotesWithRelations}
           selectedQuoteId={selectedQuote?.id}
           onSelectQuote={handleSelectQuote}
           onCreateQuote={handleCreateQuote}
         />
+      </div>
 
-        {panelMode === "create" ? (
+      {modalMode === "create" ? (
+        <ModalShell onClose={handleCloseModal} maxWidthClassName="max-w-5xl">
           <QuoteForm
             mode="create"
             clients={clients}
@@ -116,9 +130,11 @@ export function QuotesPage() {
             onCancel={handleCancelForm}
             onSubmit={handleCreateSubmit}
           />
-        ) : null}
+        </ModalShell>
+      ) : null}
 
-        {panelMode === "edit" ? (
+      {modalMode === "edit" ? (
+        <ModalShell onClose={handleCloseModal} maxWidthClassName="max-w-5xl">
           <QuoteForm
             mode="edit"
             clients={clients}
@@ -127,17 +143,23 @@ export function QuotesPage() {
             onCancel={handleCancelForm}
             onSubmit={handleEditSubmit}
           />
-        ) : null}
+        </ModalShell>
+      ) : null}
 
-        {panelMode === "detail" ? (
+      {modalMode === "detail" ? (
+        <ModalShell onClose={handleCloseModal} maxWidthClassName="max-w-5xl">
           <QuoteDetailCard
             quote={selectedQuote}
             onEditQuote={handleEditQuote}
             onCreateQuote={handleCreateQuote}
+            onDownloadPdf={handleDownloadPdf}
+            onSharePdf={handleSharePdf}
             onStatusChange={updateQuoteStatus}
+            canSharePdf={canSharePdf}
+            isPreparingPdf={isPreparingPdf}
           />
-        ) : null}
-      </div>
+        </ModalShell>
+      ) : null}
     </PageShell>
   );
 }

@@ -1,5 +1,6 @@
 export { appointmentsMock } from "./appointments";
 export { clientsMock } from "./clients";
+export { quotesMock } from "./quotes";
 export {
   appointmentsWithRelationsMock,
   clientsById,

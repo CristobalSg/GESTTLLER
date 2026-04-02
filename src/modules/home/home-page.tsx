@@ -1,92 +1,536 @@
-import { PageShell } from "../../components/shared/page-shell";
-import { useDashboardMetrics } from "../dashboard/use-dashboard-metrics";
+import { useMemo, useState } from "react";
 
-function formatAppointmentDate(date: string, time: string) {
+import { getClientDisplayName, getVehicleDisplayName } from "@/utils/entity-display";
+
+import { ModalShell } from "../../components/shared/modal-shell";
+import { navigateTo } from "../../app/routes/navigation";
+import { useAppointmentsStorage } from "../appointments/use-appointments-storage";
+
+function formatMonthLabel(date: Date) {
   return new Intl.DateTimeFormat("es-CL", {
-    dateStyle: "medium",
-  }).format(new Date(`${date}T12:00:00`)).concat(` · ${time}`);
+    month: "long",
+  }).format(date);
 }
 
-export function HomePage() {
-  const metrics = useDashboardMetrics();
+function formatSelectedDateLabel(dateKey: string) {
+  return new Intl.DateTimeFormat("es-CL", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(new Date(`${dateKey}T12:00:00`));
+}
+
+function formatAppointmentDateTime(dateKey: string, startTime: string, endTime: string) {
+  return `${new Intl.DateTimeFormat("es-CL", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(new Date(`${dateKey}T12:00:00`))} · ${startTime} - ${endTime}`;
+}
+
+function getTodayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function getMonthKey(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth()).padStart(2, "0")}`;
+}
+
+function buildDateKey(year: number, monthIndex: number, day: number) {
+  return `${year}-${String(monthIndex + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function getCalendarDays(monthDate: Date) {
+  const year = monthDate.getFullYear();
+  const monthIndex = monthDate.getMonth();
+  const firstDay = new Date(year, monthIndex, 1);
+  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+  const startOffset = (firstDay.getDay() + 6) % 7;
+
+  return Array.from({ length: startOffset + daysInMonth }, (_, index) => {
+    const dayNumber = index - startOffset + 1;
+
+    if (dayNumber < 1 || dayNumber > daysInMonth) {
+      return null;
+    }
+
+    return {
+      dayNumber,
+      dateKey: buildDateKey(year, monthIndex, dayNumber),
+    };
+  });
+}
+
+function getWeekDays(dateKey: string) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const selectedDate = new Date(year, month - 1, day);
+  const startOffset = (selectedDate.getDay() + 6) % 7;
+  const monday = new Date(year, month - 1, day - startOffset);
+
+  return Array.from({ length: 7 }, (_, index) => {
+    const currentDate = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + index);
+
+    return {
+      dayNumber: currentDate.getDate(),
+      dateKey: buildDateKey(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate()),
+      isOutsideVisibleMonth: currentDate.getMonth() !== selectedDate.getMonth(),
+    };
+  });
+}
+
+function getStatusBadge(status: string) {
+  switch (status) {
+    case "confirmed":
+      return "Confirmada";
+    case "pending":
+      return "Pendiente";
+    case "in-progress":
+      return "En curso";
+    case "finalized":
+      return "Finalizada";
+    case "cancelled":
+      return "Cancelada";
+    default:
+      return status;
+  }
+}
+
+function QuickAccessIcon({ label }: { label: (typeof quickAccessLinks)[number]["label"] }) {
+  if (label === "Presupuestos") {
+    return (
+      <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8">
+        <path d="M12 3v18" strokeLinecap="round" />
+        <path d="M16.5 7.5c0-1.7-1.8-3-4.5-3S7.5 5.8 7.5 7.5 9.3 10.5 12 10.5s4.5 1.3 4.5 3-1.8 3-4.5 3-4.5-1.3-4.5-3" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (label === "Órdenes") {
+    return (
+      <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8">
+        <path d="M8 7h10" strokeLinecap="round" />
+        <path d="M8 12h10" strokeLinecap="round" />
+        <path d="M8 17h10" strokeLinecap="round" />
+        <path d="M5 7h.01M5 12h.01M5 17h.01" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (label === "Ingreso") {
+    return (
+      <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8">
+        <path d="M12 4v11" strokeLinecap="round" />
+        <path d="m8.5 11.5 3.5 3.5 3.5-3.5" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M5 19h14" strokeLinecap="round" />
+      </svg>
+    );
+  }
 
   return (
-    <PageShell
-      eyebrow="Inicio"
-      title="Operación del día"
-      description="Entrada rápida al taller para revisar las próximas citas y el estado general del flujo sin entrar al dashboard completo."
-      stats={[
-        { label: "Citas pendientes", value: String(metrics.pendingAppointmentsCount) },
-        { label: "Citas para hoy", value: String(metrics.todayAppointmentsCount) },
-        { label: "Órdenes activas", value: String(metrics.activeWorkOrdersCount) },
-      ]}
-    >
-      <div className="space-y-6">
-        <section className="grid gap-4 lg:grid-cols-3">
-          <article className="rounded-[24px] border border-stone-200/80 bg-stone-50 p-5 shadow-sm">
-            <p className="text-sm text-stone-500">Clientes registrados</p>
-            <p className="mt-2 text-3xl font-semibold tracking-tight text-stone-950">
-              {metrics.totalClients}
-            </p>
-            <p className="mt-2 text-sm text-stone-600">Base actual disponible para agendar y generar documentos.</p>
-          </article>
+    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M4 19h16" strokeLinecap="round" />
+      <path d="M7 16V9" strokeLinecap="round" />
+      <path d="M12 16V5" strokeLinecap="round" />
+      <path d="M17 16v-4" strokeLinecap="round" />
+    </svg>
+  );
+}
 
-          <article className="rounded-[24px] border border-stone-200/80 bg-stone-50 p-5 shadow-sm">
-            <p className="text-sm text-stone-500">Vehículos registrados</p>
-            <p className="mt-2 text-3xl font-semibold tracking-tight text-stone-950">
-              {metrics.totalVehicles}
-            </p>
-            <p className="mt-2 text-sm text-stone-600">Inventario operativo asociado a clientes del prototipo.</p>
-          </article>
+const quickAccessLinks = [
+  { label: "Presupuestos", path: "/presupuestos" },
+  { label: "Órdenes", path: "/ordenes-de-trabajo" },
+  { label: "Ingreso", path: "/ingreso" },
+  { label: "Dashboard", path: "/dashboard" },
+] as const;
 
-          <article className="rounded-[24px] border border-stone-200/80 bg-stone-50 p-5 shadow-sm">
-            <p className="text-sm text-stone-500">Presupuestos aprobados</p>
-            <p className="mt-2 text-3xl font-semibold tracking-tight text-stone-950">
-              {metrics.approvedQuotesCount}
-            </p>
-            <p className="mt-2 text-sm text-stone-600">Referencias rápidas para medir avance comercial del taller.</p>
-          </article>
-        </section>
+export function HomePage() {
+  const { appointmentsWithRelations } = useAppointmentsStorage();
+  const todayKey = getTodayKey();
+  const [selectedDate, setSelectedDate] = useState(todayKey);
+  const [viewMode, setViewMode] = useState<"month" | "week">("month");
+  const [isOptionsOpen, setIsOptionsOpen] = useState(false);
+  const [isMonthMenuOpen, setIsMonthMenuOpen] = useState(false);
+  const [activeAppointmentId, setActiveAppointmentId] = useState<string | undefined>();
+  const [visibleMonth, setVisibleMonth] = useState(() => {
+    const [year, month] = todayKey.split("-").map(Number);
+    return new Date(year, month - 1, 1);
+  });
 
-        <section className="rounded-[28px] border border-stone-200/80 bg-white/90 p-6 shadow-[0_18px_50px_rgba(120,113,108,0.12)]">
-          <div className="flex flex-col gap-2 border-b border-stone-200 pb-5 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-[0.24em] text-stone-500">
-                Seguimiento inmediato
-              </p>
-              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-stone-950">
-                Citas pendientes
-              </h2>
+  const appointmentsCountByDate = useMemo(
+    () =>
+      appointmentsWithRelations.reduce<Record<string, number>>((accumulator, appointment) => {
+        if (appointment.status === "cancelled") {
+          return accumulator;
+        }
+
+        accumulator[appointment.date] = (accumulator[appointment.date] ?? 0) + 1;
+        return accumulator;
+      }, {}),
+    [appointmentsWithRelations]
+  );
+
+  const selectedAppointments = useMemo(
+    () => appointmentsWithRelations.filter((appointment) => appointment.date === selectedDate),
+    [appointmentsWithRelations, selectedDate]
+  );
+
+  const activeAppointment = useMemo(
+    () => appointmentsWithRelations.find((appointment) => appointment.id === activeAppointmentId),
+    [activeAppointmentId, appointmentsWithRelations]
+  );
+
+  const calendarDays = useMemo(
+    () => (viewMode === "month" ? getCalendarDays(visibleMonth) : getWeekDays(selectedDate)),
+    [selectedDate, viewMode, visibleMonth]
+  );
+
+  const availableYears = useMemo(() => {
+    const yearsFromAppointments = appointmentsWithRelations.map((appointment) => Number(appointment.date.slice(0, 4)));
+    const currentYear = visibleMonth.getFullYear();
+    const minYear = Math.min(currentYear - 1, ...yearsFromAppointments);
+    const maxYear = Math.max(currentYear + 1, ...yearsFromAppointments);
+
+    return Array.from({ length: maxYear - minYear + 1 }, (_, index) => minYear + index);
+  }, [appointmentsWithRelations, visibleMonth]);
+
+  const monthOptions = useMemo(
+    () =>
+      Array.from({ length: 12 }, (_, index) => ({
+        value: index,
+        label: new Intl.DateTimeFormat("es-CL", { month: "long" }).format(new Date(2026, index, 1)),
+      })),
+    []
+  );
+
+  function handleChangeYear(nextYear: number) {
+    setVisibleMonth((currentMonth) => new Date(nextYear, currentMonth.getMonth(), 1));
+    setSelectedDate((currentDateKey) => {
+      const [, month, day] = currentDateKey.split("-").map(Number);
+      const daysInMonth = new Date(nextYear, month, 0).getDate();
+      return buildDateKey(nextYear, month - 1, Math.min(day, daysInMonth));
+    });
+  }
+
+  function handleChangeMonthBySelect(monthIndex: number) {
+    const nextMonth = new Date(visibleMonth.getFullYear(), monthIndex, 1);
+    setVisibleMonth(nextMonth);
+    setSelectedDate(buildDateKey(nextMonth.getFullYear(), nextMonth.getMonth(), 1));
+    setIsMonthMenuOpen(false);
+  }
+
+  function handleSelectDate(dateKey: string) {
+    setSelectedDate(dateKey);
+
+    const [year, month] = dateKey.split("-").map(Number);
+    const nextVisibleMonth = new Date(year, month - 1, 1);
+
+    if (getMonthKey(nextVisibleMonth) !== getMonthKey(visibleMonth)) {
+      setVisibleMonth(nextVisibleMonth);
+    }
+  }
+
+  return (
+    <section className="space-y-6">
+      <div className="rounded-[32px] bg-stone-50 p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsOptionsOpen((current) => !current);
+                      setIsMonthMenuOpen(false);
+                    }}
+                    className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-stone-700 shadow-sm transition hover:bg-stone-100"
+                    aria-label="Opciones del calendario"
+                    aria-expanded={isOptionsOpen}
+                  >
+                    <span className="flex flex-col gap-1">
+                      <span className="h-0.5 w-5 rounded-full bg-current" />
+                      <span className="h-0.5 w-5 rounded-full bg-current" />
+                      <span className="h-0.5 w-3 rounded-full bg-current" />
+                    </span>
+                  </button>
+
+                  {isOptionsOpen ? (
+                    <div className="absolute left-0 top-14 z-10 w-60 rounded-3xl border border-stone-200 bg-white p-4 shadow-[0_18px_45px_rgba(120,113,108,0.18)]">
+                      <div>
+                        <p className="text-xs font-medium uppercase tracking-[0.2em] text-stone-500">
+                          Vista
+                        </p>
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setViewMode("week")}
+                            className={[
+                              "rounded-2xl px-3 py-2 text-sm font-medium transition",
+                              viewMode === "week"
+                                ? "bg-stone-900 text-white"
+                                : "bg-stone-100 text-stone-700 hover:bg-stone-200",
+                            ].join(" ")}
+                          >
+                            Semanal
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setViewMode("month")}
+                            className={[
+                              "rounded-2xl px-3 py-2 text-sm font-medium transition",
+                              viewMode === "month"
+                                ? "bg-stone-900 text-white"
+                                : "bg-stone-100 text-stone-700 hover:bg-stone-200",
+                            ].join(" ")}
+                          >
+                            Mensual
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="mt-4">
+                        <label
+                          htmlFor="calendar-year"
+                          className="text-xs font-medium uppercase tracking-[0.2em] text-stone-500"
+                        >
+                          Año
+                        </label>
+                        <select
+                          id="calendar-year"
+                          value={visibleMonth.getFullYear()}
+                          onChange={(event) => handleChangeYear(Number(event.target.value))}
+                          className="mt-3 w-full rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm font-medium text-stone-900 outline-none transition focus:border-teal-400"
+                        >
+                          {availableYears.map((year) => (
+                            <option key={year} value={year}>
+                              {year}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMonthMenuOpen((current) => !current);
+                      setIsOptionsOpen(false);
+                    }}
+                    className="flex items-center gap-3 rounded-full bg-white px-5 py-3 text-stone-900 shadow-sm transition hover:bg-stone-100"
+                    aria-label="Seleccionar mes"
+                    aria-expanded={isMonthMenuOpen}
+                  >
+                    <span className="relative block h-4 w-4 rounded border border-stone-400">
+                      <span className="absolute inset-x-0 top-0 h-1 rounded-t bg-stone-400" />
+                      <span className="absolute left-1 top-[6px] h-1 w-1 rounded-full bg-stone-400" />
+                      <span className="absolute right-1 top-[6px] h-1 w-1 rounded-full bg-stone-400" />
+                    </span>
+                    <span className="text-sm font-semibold capitalize tracking-tight">
+                      {formatMonthLabel(visibleMonth)}
+                    </span>
+                    <span className="text-xs text-stone-500">▾</span>
+                  </button>
+
+                  {isMonthMenuOpen ? (
+                    <div className="absolute right-0 top-14 z-10 w-52 rounded-3xl border border-stone-200 bg-white p-2 shadow-[0_18px_45px_rgba(120,113,108,0.18)]">
+                      {monthOptions.map((month) => (
+                        <button
+                          key={month.value}
+                          type="button"
+                          onClick={() => handleChangeMonthBySelect(month.value)}
+                          className={[
+                            "flex w-full items-center justify-between rounded-2xl px-3 py-2 text-left text-sm font-medium capitalize transition",
+                            visibleMonth.getMonth() === month.value
+                              ? "bg-[#ff6b2c] text-white"
+                              : "text-stone-700 hover:bg-stone-100",
+                          ].join(" ")}
+                        >
+                          <span>{month.label}</span>
+                          {visibleMonth.getMonth() === month.value ? <span>✓</span> : null}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+
+            <div className="mt-6 grid grid-cols-7 gap-2 text-center text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">
+              {["L", "M", "M", "J", "V", "S", "D"].map((label, index) => (
+                <span key={`${label}-${index}`} className="py-2">
+                  {label}
+                </span>
+              ))}
             </div>
-            <p className="text-sm text-stone-600">Máximo 5 próximas citas no canceladas.</p>
-          </div>
 
-          <div className="mt-5 space-y-3">
-            {metrics.upcomingAppointments.length > 0 ? (
-              metrics.upcomingAppointments.map((appointment) => (
-                <article key={appointment.id} className="rounded-3xl border border-stone-200 bg-stone-50 p-4">
-                  <p className="text-sm font-semibold text-stone-950">
-                    {formatAppointmentDate(appointment.date, appointment.startTime)}
-                  </p>
-                  <p className="mt-2 text-sm text-stone-700">{appointment.reason}</p>
-                  <div className="mt-3 flex flex-wrap gap-2 text-xs font-medium text-stone-600">
-                    <span className="rounded-full bg-white px-3 py-1">
-                      Duración estimada: {appointment.estimatedDurationMinutes} min
-                    </span>
-                    <span className="rounded-full bg-white px-3 py-1">
-                      Estado: {appointment.status}
-                    </span>
-                  </div>
-                </article>
-              ))
-            ) : (
-              <p className="text-sm leading-6 text-stone-600">
-                No hay citas pendientes registradas en este momento.
-              </p>
-            )}
-          </div>
-        </section>
+            <div className="mt-2 grid grid-cols-7 gap-2">
+              {calendarDays.map((day, index) =>
+                day ? (
+                  <button
+                    key={day.dateKey}
+                    type="button"
+                    onClick={() => handleSelectDate(day.dateKey)}
+                    className={[
+                      "relative flex aspect-square min-h-11 items-center justify-center rounded-full text-sm font-semibold transition",
+                      day.dateKey === selectedDate
+                        ? "bg-[#ff6b2c] text-white shadow-[0_10px_30px_rgba(255,107,44,0.35)]"
+                        : day.dateKey === todayKey
+                          ? "bg-stone-900 text-white"
+                          : appointmentsCountByDate[day.dateKey]
+                            ? "bg-teal-100 text-teal-700 hover:bg-teal-200"
+                            : "bg-white text-stone-700 hover:bg-stone-100",
+                      viewMode === "week" && "min-h-12",
+                      "isOutsideVisibleMonth" in day && day.isOutsideVisibleMonth ? "opacity-35" : "",
+                    ].join(" ")}
+                    aria-pressed={day.dateKey === selectedDate}
+                  >
+                    {day.dayNumber}
+                  </button>
+                ) : (
+                  <div key={`empty-${index}`} className="aspect-square min-h-11 rounded-full bg-transparent" />
+                )
+              )}
+            </div>
       </div>
-    </PageShell>
+
+      <section className="rounded-[28px] border border-stone-200/80 bg-white/90 p-6 shadow-[0_18px_50px_rgba(120,113,108,0.12)]">
+        <div className="rounded-[32px] border border-stone-200 bg-stone-50/70 p-5">
+            <div className="flex flex-col gap-2 border-b border-stone-200 pb-5 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.24em] text-stone-500">
+                  Seguimiento inmediato
+                </p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-stone-950 capitalize">
+                  {formatSelectedDateLabel(selectedDate)}
+                </h2>
+              </div>
+              <p className="text-sm text-stone-600">
+                {selectedAppointments.length} cita{selectedAppointments.length === 1 ? "" : "s"} para este día
+              </p>
+            </div>
+
+            <div className="mt-5 space-y-3">
+              {selectedAppointments.length > 0 ? (
+                selectedAppointments.map((appointment) => (
+                  <button
+                    key={appointment.id}
+                    type="button"
+                    onClick={() => setActiveAppointmentId(appointment.id)}
+                    className="block w-full rounded-3xl border border-stone-200 bg-white p-4 text-left shadow-sm transition hover:border-stone-300 hover:shadow-md"
+                  >
+                    <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-stone-600">
+                      <span className="rounded-full bg-stone-100 px-3 py-1">
+                        {appointment.startTime} - {appointment.endTime}
+                      </span>
+                      <span className="rounded-full bg-stone-100 px-3 py-1">
+                        {appointment.estimatedDurationMinutes} min
+                      </span>
+                      <span className="rounded-full bg-stone-100 px-3 py-1">
+                        {getStatusBadge(appointment.status)}
+                      </span>
+                    </div>
+
+                    <h3 className="mt-3 text-base font-semibold text-stone-950">{appointment.reason}</h3>
+                    <p className="mt-2 text-sm text-stone-700">
+                      {getClientDisplayName(appointment.client)}
+                    </p>
+                    <p className="mt-1 text-sm text-stone-600">
+                      {getVehicleDisplayName(appointment.vehicle)}
+                    </p>
+
+                    <p className="mt-3 text-sm leading-6 text-stone-600">
+                      {appointment.notes || "Sin notas adicionales para esta cita."}
+                    </p>
+                  </button>
+                ))
+              ) : (
+                <p className="text-sm leading-6 text-stone-600">
+                  No hay citas registradas para este día. Selecciona otra fecha del calendario para revisar la agenda.
+                </p>
+              )}
+            </div>
+
+        </div>
+      </section>
+
+      <div className="overflow-x-auto pb-2">
+        <div className="flex min-w-max gap-3">
+          {quickAccessLinks.map((link) => (
+            <button
+              key={link.path}
+              type="button"
+              onClick={() => navigateTo(link.path)}
+              className="w-36 shrink-0 rounded-[24px] border border-stone-800 bg-stone-900 px-4 py-5 text-center text-white shadow-[0_16px_40px_rgba(28,25,23,0.18)] transition hover:-translate-y-0.5 hover:bg-stone-800"
+            >
+              <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-base font-semibold text-white">
+                <QuickAccessIcon label={link.label} />
+              </span>
+              <span className="mt-3 block text-sm font-medium text-white">{link.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {activeAppointment ? (
+        <ModalShell onClose={() => setActiveAppointmentId(undefined)}>
+          <article className="rounded-[28px] border border-stone-200 bg-white p-6 shadow-[0_24px_70px_rgba(17,24,39,0.18)] sm:p-7">
+            <div className="border-b border-stone-200 pb-5">
+              <p className="text-xs font-medium uppercase tracking-[0.24em] text-stone-500">Detalle de cita</p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-stone-950">
+                {activeAppointment.reason}
+              </h2>
+              <p className="mt-3 text-sm capitalize text-stone-600">
+                {formatAppointmentDateTime(
+                  activeAppointment.date,
+                  activeAppointment.startTime,
+                  activeAppointment.endTime
+                )}
+              </p>
+            </div>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-3xl border border-stone-200 bg-stone-50 p-4">
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-stone-500">Cliente</p>
+                <p className="mt-2 text-base font-semibold text-stone-950">
+                  {getClientDisplayName(activeAppointment.client)}
+                </p>
+                <p className="mt-2 text-sm text-stone-600">{activeAppointment.client?.phone || "Sin teléfono"}</p>
+                <p className="mt-1 text-sm text-stone-600">{activeAppointment.client?.email || "Sin correo"}</p>
+              </div>
+
+              <div className="rounded-3xl border border-stone-200 bg-stone-50 p-4">
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-stone-500">Vehículo</p>
+                <p className="mt-2 text-base font-semibold text-stone-950">
+                  {getVehicleDisplayName(activeAppointment.vehicle)}
+                </p>
+                <p className="mt-2 text-sm text-stone-600">
+                  {activeAppointment.vehicle?.licensePlate || "Patente pendiente"}
+                </p>
+                <p className="mt-1 text-sm text-stone-600">
+                  {[activeAppointment.vehicle?.brand, activeAppointment.vehicle?.model]
+                    .filter(Boolean)
+                    .join(" ") || "Modelo pendiente"}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 flex flex-wrap gap-2 text-xs font-medium text-stone-600">
+              <span className="rounded-full bg-stone-100 px-3 py-2">
+                Duración: {activeAppointment.estimatedDurationMinutes} min
+              </span>
+              <span className="rounded-full bg-stone-100 px-3 py-2">
+                Estado: {getStatusBadge(activeAppointment.status)}
+              </span>
+            </div>
+
+            <div className="mt-5 rounded-3xl border border-stone-200 bg-stone-50 p-4">
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-stone-500">Notas</p>
+              <p className="mt-2 text-sm leading-6 text-stone-700">
+                {activeAppointment.notes || "Sin notas adicionales para esta cita."}
+              </p>
+            </div>
+          </article>
+        </ModalShell>
+      ) : null}
+    </section>
   );
 }

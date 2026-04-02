@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { ModalShell } from "../../components/shared/modal-shell";
 import { AppointmentForm } from "../../modules/appointments/appointment-form";
@@ -7,6 +8,21 @@ import { useAppointmentsStorage } from "../../modules/appointments/use-appointme
 import { navigateTo } from "../routes/navigation";
 import { appRoutes, relatedRoutesById } from "../routes/routes";
 import { useCurrentRoute } from "../routes/use-current-route";
+
+const mobileMenuGroups = [
+  {
+    id: "home",
+    routes: ["home"],
+  },
+  {
+    id: "operations",
+    routes: ["clients", "vehicles", "appointments", "intake", "dashboard"],
+  },
+  {
+    id: "documents",
+    routes: ["quotes", "work-orders", "reports"],
+  },
+] as const;
 
 export function AppHeader() {
   const currentRoute = useCurrentRoute();
@@ -39,7 +55,7 @@ export function AppHeader() {
   }
 
   return (
-    <header className="sticky top-0 z-10 border-b border-stone-200/80 bg-white/80 backdrop-blur">
+    <header className="sticky top-0 z-30 border-b border-stone-200/80 bg-white/80 backdrop-blur">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between gap-4">
           <div>
@@ -49,7 +65,6 @@ export function AppHeader() {
             <h2 className="mt-1 text-2xl font-semibold tracking-tight text-stone-950">
               {currentRoute.label}
             </h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-600">{currentRoute.description}</p>
           </div>
 
           <div className="hidden rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-right shadow-sm xl:block">
@@ -58,11 +73,11 @@ export function AppHeader() {
             <p className="mt-1 text-sm text-stone-600">Base estable para demo interna y validación.</p>
           </div>
 
-          <div className="relative ml-auto flex items-center gap-2 lg:hidden">
+          <div className="relative z-40 ml-auto flex items-center gap-2 lg:hidden">
             <button
               type="button"
               onClick={() => setIsQuickAppointmentOpen(true)}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-stone-300 bg-white text-lg font-semibold text-stone-900 shadow-sm transition hover:border-stone-400"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-[#ff6b2c] bg-[#ff6b2c] text-lg font-semibold text-white shadow-sm transition hover:border-[#f25b19] hover:bg-[#f25b19]"
               aria-label="Abrir acceso rápido para nueva cita"
             >
               +
@@ -82,40 +97,60 @@ export function AppHeader() {
               </svg>
             </button>
 
-            {isMenuOpen ? (
-              <>
-                <button
-                  type="button"
-                  aria-label="Cerrar menu"
-                  onClick={() => setIsMenuOpen(false)}
-                  className="fixed inset-0 z-10 bg-stone-950/10"
-                />
-                <div className="absolute right-0 top-[calc(100%+0.75rem)] z-20 w-72 rounded-3xl border border-stone-200 bg-white p-3 shadow-[0_20px_60px_rgba(15,23,42,0.18)]">
-                  <p className="px-2 pb-2 text-xs font-medium uppercase tracking-[0.2em] text-stone-500">
-                    Modulos
-                  </p>
-                  <div className="space-y-1">
-                    {appRoutes.map((route) => {
-                      const isActive = route.id === currentRoute.id;
+            {isMenuOpen && typeof document !== "undefined"
+              ? createPortal(
+                  <>
+                    <button
+                      type="button"
+                      aria-label="Cerrar menu"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="fixed inset-0 z-40 bg-stone-950/10 lg:hidden"
+                    />
+                    <div className="fixed right-4 top-24 z-50 w-[min(18rem,calc(100vw-2rem))] rounded-3xl border border-stone-200 bg-white p-3 shadow-[0_20px_60px_rgba(15,23,42,0.18)] lg:hidden sm:right-6">
+                      <p className="px-2 pb-2 text-xs font-medium uppercase tracking-[0.2em] text-stone-500">
+                        Modulos
+                      </p>
+                      <div className="space-y-3">
+                        {mobileMenuGroups.map((group, groupIndex) => {
+                          const routes = group.routes
+                            .map((routeId) => appRoutes.find((route) => route.id === routeId))
+                            .filter((route) => route !== undefined);
 
-                      return (
-                        <button
-                          key={route.id}
-                          type="button"
-                          onClick={() => navigateTo(route.path)}
-                          className={[
-                            "flex w-full items-center justify-between rounded-2xl px-3 py-3 text-left transition",
-                            isActive ? "bg-stone-900 text-white" : "bg-stone-50 text-stone-800 hover:bg-stone-100",
-                          ].join(" ")}
-                        >
-                          <span className="block text-sm font-semibold">{route.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </>
-            ) : null}
+                          return (
+                            <div
+                              key={group.id}
+                              className={groupIndex > 0 ? "border-t border-stone-200 pt-3" : ""}
+                            >
+                              <div className="space-y-1">
+                                {routes.map((route) => {
+                                  const isActive = route.id === currentRoute.id;
+
+                                  return (
+                                    <button
+                                      key={route.id}
+                                      type="button"
+                                      onClick={() => navigateTo(route.path)}
+                                      className={[
+                                        "flex w-full items-center justify-between rounded-2xl px-3 py-3 text-left transition",
+                                        isActive
+                                          ? "bg-stone-900 text-white"
+                                          : "bg-stone-50 text-stone-800 hover:bg-stone-100",
+                                      ].join(" ")}
+                                    >
+                                      <span className="block text-sm font-semibold">{route.label}</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </>,
+                  document.body
+                )
+              : null}
           </div>
         </div>
 
