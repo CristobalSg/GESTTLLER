@@ -12,6 +12,7 @@ import {
 type IntakeFormProps = {
   clients: Client[];
   vehicles: Vehicle[];
+  onCancel: () => void;
   onSubmit: (values: IntakeFormValues, photoDrafts: IntakePhotoDraft[]) => void;
 };
 
@@ -36,14 +37,6 @@ function validateIntakeForm(values: IntakeFormValues): FormErrors {
 
   if (!values.mileageKm.trim() || Number.isNaN(Number(values.mileageKm)) || Number(values.mileageKm) < 0) {
     errors.mileageKm = "Ingresa un kilometraje válido.";
-  }
-
-  if (!values.reportedIssue.trim()) {
-    errors.reportedIssue = "Ingresa el motivo de ingreso.";
-  }
-
-  if (!values.arrivalCondition.trim()) {
-    errors.arrivalCondition = "Describe el estado de llegada o daños previos.";
   }
 
   return errors;
@@ -75,10 +68,11 @@ function readFileAsDataUrl(file: File) {
   });
 }
 
-export function IntakeForm({ clients, vehicles, onSubmit }: IntakeFormProps) {
+export function IntakeForm({ clients, vehicles, onCancel, onSubmit }: IntakeFormProps) {
   const [values, setValues] = useState<IntakeFormValues>(getEmptyIntakeFormValues());
   const [photoDrafts, setPhotoDrafts] = useState<IntakePhotoDraft[]>([]);
   const [errors, setErrors] = useState<FormErrors>({});
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
   const availableVehicles = useMemo(
     () => vehicles.filter((vehicle) => vehicle.clientId === values.clientId),
@@ -131,6 +125,7 @@ export function IntakeForm({ clients, vehicles, onSubmit }: IntakeFormProps) {
     setValues(getEmptyIntakeFormValues());
     setPhotoDrafts([]);
     setErrors({});
+    setIsAdvancedOpen(false);
   }
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -153,7 +148,7 @@ export function IntakeForm({ clients, vehicles, onSubmit }: IntakeFormProps) {
         <p className="text-xs font-medium uppercase tracking-[0.24em] text-stone-500">Nuevo ingreso</p>
         <h2 className="mt-2 text-2xl font-semibold tracking-tight text-stone-950">Recepcionar vehículo</h2>
         <p className="mt-2 text-sm leading-6 text-stone-600">
-          Registra el estado inicial del vehículo, el motivo de ingreso y evidencia visual básica para el prototipo.
+          Registra el ingreso del vehículo con kilometraje, evidencia visual y datos base para el prototipo.
         </p>
       </div>
 
@@ -197,68 +192,28 @@ export function IntakeForm({ clients, vehicles, onSubmit }: IntakeFormProps) {
           </label>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-stone-700">Kilometraje</span>
-            <input
-              type="number"
-              min="0"
-              value={values.mileageKm}
-              onChange={(event) => updateField("mileageKm", event.target.value)}
-              className="w-full rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-amber-500 focus:bg-white"
-            />
-            <FieldError message={errors.mileageKm} />
-          </label>
-
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-stone-700">Nivel de combustible</span>
-            <select
-              value={values.fuelLevel}
-              onChange={(event) =>
-                updateField("fuelLevel", event.target.value as IntakeFormValues["fuelLevel"])
-              }
-              className="w-full rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-amber-500 focus:bg-white"
-            >
-              <option value="empty">Vacío</option>
-              <option value="quarter">1/4</option>
-              <option value="half">1/2</option>
-              <option value="three-quarters">3/4</option>
-              <option value="full">Lleno</option>
-            </select>
-          </label>
-        </div>
+        <label className="block">
+          <span className="mb-2 block text-sm font-medium text-stone-700">Kilometraje</span>
+          <input
+            type="number"
+            min="0"
+            value={values.mileageKm}
+            onChange={(event) => updateField("mileageKm", event.target.value)}
+            className="w-full rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-amber-500 focus:bg-white"
+          />
+          <FieldError message={errors.mileageKm} />
+        </label>
 
         <label className="block">
-          <span className="mb-2 block text-sm font-medium text-stone-700">Motivo de ingreso</span>
+          <span className="mb-2 block text-sm font-medium text-stone-700">
+            Motivo de ingreso <span className="text-stone-400">(opcional)</span>
+          </span>
           <input
             value={values.reportedIssue}
             onChange={(event) => updateField("reportedIssue", event.target.value)}
             className="w-full rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-amber-500 focus:bg-white"
           />
           <FieldError message={errors.reportedIssue} />
-        </label>
-
-        <label className="block">
-          <span className="mb-2 block text-sm font-medium text-stone-700">
-            Daños previos o estado de llegada
-          </span>
-          <textarea
-            rows={3}
-            value={values.arrivalCondition}
-            onChange={(event) => updateField("arrivalCondition", event.target.value)}
-            className="w-full rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-amber-500 focus:bg-white"
-          />
-          <FieldError message={errors.arrivalCondition} />
-        </label>
-
-        <label className="block">
-          <span className="mb-2 block text-sm font-medium text-stone-700">Observaciones iniciales</span>
-          <textarea
-            rows={4}
-            value={values.observations}
-            onChange={(event) => updateField("observations", event.target.value)}
-            className="w-full rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-amber-500 focus:bg-white"
-          />
         </label>
 
         <div className="grid gap-4 xl:grid-cols-3">
@@ -273,6 +228,10 @@ export function IntakeForm({ clients, vehicles, onSubmit }: IntakeFormProps) {
             />
           ))}
         </div>
+
+        <p className="text-sm leading-6 text-stone-600">
+          Usa las fotos para dejar evidencia de daños visibles, estado general y lectura del tablero.
+        </p>
 
         <div className="rounded-3xl border border-stone-200 bg-stone-50 p-5">
           <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-stone-500">
@@ -315,13 +274,44 @@ export function IntakeForm({ clients, vehicles, onSubmit }: IntakeFormProps) {
           </div>
         </div>
 
+        <div className="rounded-3xl border border-stone-200 bg-stone-50 p-5">
+          <button
+            type="button"
+            onClick={() => setIsAdvancedOpen((currentValue) => !currentValue)}
+            className="flex w-full items-center justify-between gap-3 text-left"
+            aria-expanded={isAdvancedOpen}
+          >
+            <span>
+              <span className="block text-sm font-semibold uppercase tracking-[0.18em] text-stone-500">
+                Avanzado
+              </span>
+              <span className="mt-1 block text-sm text-stone-600">
+                Observación inicial y notas internas del ingreso.
+              </span>
+            </span>
+            <span className="text-xl font-light text-stone-500">{isAdvancedOpen ? "−" : "+"}</span>
+          </button>
+
+          {isAdvancedOpen ? (
+            <label className="mt-4 block">
+              <span className="mb-2 block text-sm font-medium text-stone-700">Observación inicial</span>
+              <textarea
+                rows={4}
+                value={values.observations}
+                onChange={(event) => updateField("observations", event.target.value)}
+                className="w-full rounded-2xl border border-stone-300 bg-white px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-amber-500"
+              />
+            </label>
+          ) : null}
+        </div>
+
         <div className="flex flex-col gap-3 border-t border-stone-200 pt-5 sm:flex-row sm:justify-end">
           <button
             type="button"
-            onClick={resetForm}
+            onClick={onCancel}
             className="inline-flex justify-center rounded-2xl border border-stone-300 bg-white px-4 py-3 text-sm font-semibold text-stone-800 transition hover:border-stone-400"
           >
-            Limpiar
+            Cancelar
           </button>
           <button
             type="submit"

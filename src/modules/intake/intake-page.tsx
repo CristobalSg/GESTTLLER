@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import { ModalShell } from "../../components/shared/modal-shell";
 import { PageShell } from "../../components/shared/page-shell";
 import { IntakeDetailCard } from "./intake-detail-card";
 import { IntakeForm } from "./intake-form";
@@ -12,6 +13,7 @@ export function IntakePage() {
   const [selectedRecordId, setSelectedRecordId] = useState<string | undefined>(
     intakeRecordsWithRelations[0]?.id
   );
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const selectedRecord =
     intakeRecordsWithRelations.find((record) => record.id === selectedRecordId) ??
@@ -33,6 +35,7 @@ export function IntakePage() {
   function handleCreateRecord(values: IntakeFormValues, photoDrafts: IntakePhotoDraft[]) {
     const nextRecord = createIntakeRecord(values, photoDrafts);
     setSelectedRecordId(nextRecord.id);
+    setIsCreateModalOpen(false);
   }
 
   return (
@@ -54,7 +57,15 @@ export function IntakePage() {
     >
       <div className="grid gap-6 xl:grid-cols-[minmax(340px,420px)_minmax(0,1fr)]">
         <div className="space-y-6">
-          <IntakeForm clients={clients} vehicles={vehicles} onSubmit={handleCreateRecord} />
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => setIsCreateModalOpen(true)}
+              className="inline-flex justify-center rounded-2xl border border-stone-900 bg-stone-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-stone-800"
+            >
+              Nuevo ingreso
+            </button>
+          </div>
           <IntakeRecordList
             records={intakeRecordsWithRelations}
             selectedRecordId={selectedRecord?.id}
@@ -64,6 +75,17 @@ export function IntakePage() {
 
         <IntakeDetailCard record={selectedRecord} />
       </div>
+
+      {isCreateModalOpen ? (
+        <ModalShell onClose={() => setIsCreateModalOpen(false)} maxWidthClassName="max-w-5xl">
+          <IntakeForm
+            clients={clients}
+            vehicles={vehicles}
+            onCancel={() => setIsCreateModalOpen(false)}
+            onSubmit={handleCreateRecord}
+          />
+        </ModalShell>
+      ) : null}
     </PageShell>
   );
 }

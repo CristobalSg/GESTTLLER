@@ -241,13 +241,6 @@ export function QuoteForm({ mode, clients, vehicles, quote, onCancel, onSubmit }
         <div className="rounded-3xl border border-stone-200 bg-stone-50 p-5">
           <div className="flex items-center justify-between gap-3">
             <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-stone-500">Ítems</h3>
-            <button
-              type="button"
-              onClick={handleAddItem}
-              className="rounded-2xl border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-800 transition hover:border-stone-400"
-            >
-              Agregar ítem
-            </button>
           </div>
 
           <div className="mt-4 space-y-4">
@@ -293,29 +286,31 @@ export function QuoteForm({ mode, clients, vehicles, quote, onCancel, onSubmit }
                       </select>
                     </label>
 
-                    <label className="block">
-                      <span className="mb-2 block text-sm font-medium text-stone-700">Cantidad</span>
-                      <input
-                        type="number"
-                        min="1"
-                        step="1"
-                        value={item.quantity}
-                        onChange={(event) => updateItemField(item.id, "quantity", event.target.value)}
-                        className="w-full rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-amber-500 focus:bg-white"
-                      />
-                    </label>
+                    <div className="grid grid-cols-2 gap-4 md:col-span-2">
+                      <label className="block">
+                        <span className="mb-2 block text-sm font-medium text-stone-700">Cantidad</span>
+                        <input
+                          type="number"
+                          min="1"
+                          step="1"
+                          value={item.quantity}
+                          onChange={(event) => updateItemField(item.id, "quantity", event.target.value)}
+                          className="w-full rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-amber-500 focus:bg-white"
+                        />
+                      </label>
 
-                    <label className="block">
-                      <span className="mb-2 block text-sm font-medium text-stone-700">Precio unitario</span>
-                      <input
-                        type="number"
-                        min="0"
-                        step="1"
-                        value={item.unitPrice}
-                        onChange={(event) => updateItemField(item.id, "unitPrice", event.target.value)}
-                        className="w-full rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-amber-500 focus:bg-white"
-                      />
-                    </label>
+                      <label className="block">
+                        <span className="mb-2 block text-sm font-medium text-stone-700">Precio unitario</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={item.unitPrice}
+                          onChange={(event) => updateItemField(item.id, "unitPrice", event.target.value)}
+                          className="w-full rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-amber-500 focus:bg-white"
+                        />
+                      </label>
+                    </div>
 
                     <div className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
                       <p className="text-sm text-stone-500">Subtotal</p>
@@ -326,6 +321,17 @@ export function QuoteForm({ mode, clients, vehicles, quote, onCancel, onSubmit }
               );
             })}
           </div>
+
+          <div className="mt-4 flex justify-end">
+            <button
+              type="button"
+              onClick={handleAddItem}
+              className="rounded-2xl border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-800 transition hover:border-stone-400"
+            >
+              Agregar ítem
+            </button>
+          </div>
+
           <FieldError message={errors.items} />
         </div>
 

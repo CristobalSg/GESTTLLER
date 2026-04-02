@@ -5,6 +5,7 @@ import { ModalShell } from "../../components/shared/modal-shell";
 import { AppointmentForm } from "../../modules/appointments/appointment-form";
 import type { AppointmentFormValues } from "../../modules/appointments/appointment-form.types";
 import { useAppointmentsStorage } from "../../modules/appointments/use-appointments-storage";
+import { logout } from "../../utils/auth";
 import { navigateTo } from "../routes/navigation";
 import { appRoutes, relatedRoutesById } from "../routes/routes";
 import { useCurrentRoute } from "../routes/use-current-route";
@@ -52,6 +53,11 @@ export function AppHeader() {
   function handleQuickAppointmentSubmit(values: AppointmentFormValues) {
     createAppointment(values);
     setIsQuickAppointmentOpen(false);
+  }
+
+  function handleLogout() {
+    setIsMenuOpen(false);
+    logout();
   }
 
   return (
@@ -145,6 +151,16 @@ export function AppHeader() {
                             </div>
                           );
                         })}
+                      </div>
+
+                      <div className="mt-3 border-t border-stone-200 pt-3">
+                        <button
+                          type="button"
+                          onClick={handleLogout}
+                          className="flex w-full items-center justify-between rounded-2xl border border-rose-200 bg-rose-50 px-3 py-3 text-left text-rose-700 transition hover:bg-rose-100"
+                        >
+                          <span className="block text-sm font-semibold">Cerrar sesión</span>
+                        </button>
                       </div>
                     </div>
                   </>,

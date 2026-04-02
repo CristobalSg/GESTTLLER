@@ -3,7 +3,6 @@ import { useMemo, useState } from "react";
 import { getClientDisplayName, getVehicleDisplayName } from "@/utils/entity-display";
 
 import { ModalShell } from "../../components/shared/modal-shell";
-import { navigateTo } from "../../app/routes/navigation";
 import { useAppointmentsStorage } from "../appointments/use-appointments-storage";
 
 function formatMonthLabel(date: Date) {
@@ -46,17 +45,15 @@ function getCalendarDays(monthDate: Date) {
   const firstDay = new Date(year, monthIndex, 1);
   const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
   const startOffset = (firstDay.getDay() + 6) % 7;
+  const totalCells = Math.ceil((startOffset + daysInMonth) / 7) * 7;
 
-  return Array.from({ length: startOffset + daysInMonth }, (_, index) => {
-    const dayNumber = index - startOffset + 1;
-
-    if (dayNumber < 1 || dayNumber > daysInMonth) {
-      return null;
-    }
+  return Array.from({ length: totalCells }, (_, index) => {
+    const currentDate = new Date(year, monthIndex, index - startOffset + 1);
 
     return {
-      dayNumber,
-      dateKey: buildDateKey(year, monthIndex, dayNumber),
+      dayNumber: currentDate.getDate(),
+      dateKey: buildDateKey(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate()),
+      isOutsideVisibleMonth: currentDate.getMonth() !== monthIndex,
     };
   });
 }
@@ -95,54 +92,6 @@ function getStatusBadge(status: string) {
   }
 }
 
-function QuickAccessIcon({ label }: { label: (typeof quickAccessLinks)[number]["label"] }) {
-  if (label === "Presupuestos") {
-    return (
-      <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8">
-        <path d="M12 3v18" strokeLinecap="round" />
-        <path d="M16.5 7.5c0-1.7-1.8-3-4.5-3S7.5 5.8 7.5 7.5 9.3 10.5 12 10.5s4.5 1.3 4.5 3-1.8 3-4.5 3-4.5-1.3-4.5-3" strokeLinecap="round" />
-      </svg>
-    );
-  }
-
-  if (label === "Órdenes") {
-    return (
-      <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8">
-        <path d="M8 7h10" strokeLinecap="round" />
-        <path d="M8 12h10" strokeLinecap="round" />
-        <path d="M8 17h10" strokeLinecap="round" />
-        <path d="M5 7h.01M5 12h.01M5 17h.01" strokeLinecap="round" />
-      </svg>
-    );
-  }
-
-  if (label === "Ingreso") {
-    return (
-      <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8">
-        <path d="M12 4v11" strokeLinecap="round" />
-        <path d="m8.5 11.5 3.5 3.5 3.5-3.5" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M5 19h14" strokeLinecap="round" />
-      </svg>
-    );
-  }
-
-  return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8">
-      <path d="M4 19h16" strokeLinecap="round" />
-      <path d="M7 16V9" strokeLinecap="round" />
-      <path d="M12 16V5" strokeLinecap="round" />
-      <path d="M17 16v-4" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-const quickAccessLinks = [
-  { label: "Presupuestos", path: "/presupuestos" },
-  { label: "Órdenes", path: "/ordenes-de-trabajo" },
-  { label: "Ingreso", path: "/ingreso" },
-  { label: "Dashboard", path: "/dashboard" },
-] as const;
-
 export function HomePage() {
   const { appointmentsWithRelations } = useAppointmentsStorage();
   const todayKey = getTodayKey();
@@ -177,6 +126,33 @@ export function HomePage() {
   const activeAppointment = useMemo(
     () => appointmentsWithRelations.find((appointment) => appointment.id === activeAppointmentId),
     [activeAppointmentId, appointmentsWithRelations]
+  );
+
+  const activeAppointments = useMemo(
+    () => appointmentsWithRelations.filter((appointment) => appointment.status !== "cancelled"),
+    [appointmentsWithRelations]
+  );
+
+  const monthlyAppointments = useMemo(
+    () =>
+      activeAppointments.filter((appointment) => appointment.date.startsWith(getMonthKey(visibleMonth))),
+    [activeAppointments, visibleMonth]
+  );
+
+  const upcomingAppointmentsCount = useMemo(
+    () =>
+      activeAppointments.filter((appointment) => {
+        if (appointment.date > todayKey) {
+          return true;
+        }
+
+        if (appointment.date < todayKey) {
+          return false;
+        }
+
+        return appointment.endTime >= new Date().toTimeString().slice(0, 5);
+      }).length,
+    [activeAppointments, todayKey]
   );
 
   const calendarDays = useMemo(
@@ -363,32 +339,29 @@ export function HomePage() {
             </div>
 
             <div className="mt-2 grid grid-cols-7 gap-2">
-              {calendarDays.map((day, index) =>
-                day ? (
-                  <button
-                    key={day.dateKey}
-                    type="button"
-                    onClick={() => handleSelectDate(day.dateKey)}
-                    className={[
-                      "relative flex aspect-square min-h-11 items-center justify-center rounded-full text-sm font-semibold transition",
-                      day.dateKey === selectedDate
-                        ? "bg-[#ff6b2c] text-white shadow-[0_10px_30px_rgba(255,107,44,0.35)]"
-                        : day.dateKey === todayKey
-                          ? "bg-stone-900 text-white"
-                          : appointmentsCountByDate[day.dateKey]
-                            ? "bg-teal-100 text-teal-700 hover:bg-teal-200"
+              {calendarDays.map((day) => (
+                <button
+                  key={day.dateKey}
+                  type="button"
+                  onClick={() => handleSelectDate(day.dateKey)}
+                  className={[
+                    "relative flex aspect-square min-h-11 items-center justify-center rounded-full text-sm font-semibold transition",
+                    day.dateKey === selectedDate
+                      ? "bg-[#ff6b2c] text-white shadow-[0_10px_30px_rgba(255,107,44,0.35)]"
+                      : day.dateKey === todayKey
+                        ? "bg-stone-900 text-white"
+                        : appointmentsCountByDate[day.dateKey]
+                          ? "bg-teal-100 text-teal-700 hover:bg-teal-200"
+                          : day.isOutsideVisibleMonth
+                            ? "border border-stone-200 bg-stone-100 text-stone-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.65),0_6px_16px_rgba(120,113,108,0.10)] hover:bg-stone-200"
                             : "bg-white text-stone-700 hover:bg-stone-100",
-                      viewMode === "week" && "min-h-12",
-                      "isOutsideVisibleMonth" in day && day.isOutsideVisibleMonth ? "opacity-35" : "",
-                    ].join(" ")}
-                    aria-pressed={day.dateKey === selectedDate}
-                  >
-                    {day.dayNumber}
-                  </button>
-                ) : (
-                  <div key={`empty-${index}`} className="aspect-square min-h-11 rounded-full bg-transparent" />
-                )
-              )}
+                    viewMode === "week" && "min-h-12",
+                  ].join(" ")}
+                  aria-pressed={day.dateKey === selectedDate}
+                >
+                  {day.dayNumber}
+                </button>
+              ))}
             </div>
       </div>
 
@@ -452,23 +425,56 @@ export function HomePage() {
         </div>
       </section>
 
-      <div className="overflow-x-auto pb-2">
-        <div className="flex min-w-max gap-3">
-          {quickAccessLinks.map((link) => (
-            <button
-              key={link.path}
-              type="button"
-              onClick={() => navigateTo(link.path)}
-              className="w-36 shrink-0 rounded-[24px] border border-stone-800 bg-stone-900 px-4 py-5 text-center text-white shadow-[0_16px_40px_rgba(28,25,23,0.18)] transition hover:-translate-y-0.5 hover:bg-stone-800"
-            >
-              <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-base font-semibold text-white">
-                <QuickAccessIcon label={link.label} />
-              </span>
-              <span className="mt-3 block text-sm font-medium text-white">{link.label}</span>
-            </button>
-          ))}
+      <section className="rounded-[28px] border border-stone-200/80 bg-white/90 p-6 shadow-[0_18px_50px_rgba(120,113,108,0.12)]">
+        <div className="flex flex-col gap-2 border-b border-stone-200 pb-5 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-[0.24em] text-stone-500">Estadísticas</p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-stone-950">
+              Resumen rápido del taller
+            </h2>
+          </div>
+          <p className="text-sm text-stone-600">Lectura simple para la operación diaria.</p>
         </div>
-      </div>
+
+        <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <article className="rounded-[28px] border border-stone-200 bg-stone-50 p-5 shadow-[0_10px_30px_rgba(120,113,108,0.10)]">
+            <p className="text-sm text-stone-500">Citas del día</p>
+            <p className="mt-2 text-3xl font-semibold tracking-tight text-stone-950">
+              {selectedAppointments.length}
+            </p>
+          </article>
+
+          <article className="rounded-[28px] border border-stone-200 bg-stone-50 p-5 shadow-[0_10px_30px_rgba(120,113,108,0.10)]">
+            <p className="text-sm text-stone-500">Próximas activas</p>
+            <p className="mt-2 text-3xl font-semibold tracking-tight text-stone-950">
+              {upcomingAppointmentsCount}
+            </p>
+          </article>
+
+          <article className="rounded-[28px] border border-stone-200 bg-stone-50 p-5 shadow-[0_10px_30px_rgba(120,113,108,0.10)]">
+            <p className="text-sm text-stone-500">Mes visible</p>
+            <p className="mt-2 text-3xl font-semibold tracking-tight text-stone-950">
+              {monthlyAppointments.length}
+            </p>
+          </article>
+
+          <article className="rounded-[28px] border border-stone-200 bg-stone-50 p-5 shadow-[0_10px_30px_rgba(120,113,108,0.10)]">
+            <p className="text-sm text-stone-500">Días con carga</p>
+            <p className="mt-2 text-3xl font-semibold tracking-tight text-stone-950">
+              {Object.keys(appointmentsCountByDate).length}
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <footer className="rounded-[28px] border border-stone-200/80 bg-white/70 px-6 py-5 shadow-[0_12px_35px_rgba(120,113,108,0.08)]">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm font-medium text-stone-700">GESTTLLER · Prototipo operativo del taller</p>
+          <p className="text-sm text-stone-500">
+            Agenda, seguimiento y registro diario en una sola vista.
+          </p>
+        </div>
+      </footer>
 
       {activeAppointment ? (
         <ModalShell onClose={() => setActiveAppointmentId(undefined)}>
@@ -531,6 +537,7 @@ export function HomePage() {
           </article>
         </ModalShell>
       ) : null}
+
     </section>
   );
 }
