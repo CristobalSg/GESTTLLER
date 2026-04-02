@@ -1,0 +1,70 @@
+import { appRoutes, relatedRoutesById } from "../routes/routes";
+import { navigateTo } from "../routes/navigation";
+import { useCurrentRoute } from "../routes/use-current-route";
+
+export function AppHeader() {
+  const currentRoute = useCurrentRoute();
+  const relatedRoutes = appRoutes.filter((route) => relatedRoutesById[currentRoute.id].includes(route.id));
+
+  return (
+    <header className="sticky top-0 z-10 border-b border-stone-200/80 bg-white/80 backdrop-blur">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-[0.24em] text-stone-500">
+              Taller mecánico
+            </p>
+            <h2 className="mt-1 text-2xl font-semibold tracking-tight text-stone-950">
+              {currentRoute.label}
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-600">{currentRoute.description}</p>
+          </div>
+
+          <div className="hidden rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-right shadow-sm xl:block">
+            <p className="text-xs uppercase tracking-[0.18em] text-stone-500">Estado del MVP</p>
+            <p className="mt-1 text-sm font-medium text-stone-900">Flujo principal operativo</p>
+            <p className="mt-1 text-sm text-stone-600">Base estable para demo interna y validación.</p>
+          </div>
+        </div>
+
+        <div className="flex gap-2 overflow-x-auto pb-1 lg:hidden">
+          {appRoutes.map((route) => {
+            const isActive = route.id === currentRoute.id;
+
+            return (
+              <button
+                key={route.id}
+                type="button"
+                onClick={() => navigateTo(route.path)}
+                className={[
+                  "whitespace-nowrap rounded-full border px-4 py-2 text-sm font-medium transition",
+                  isActive
+                    ? "border-stone-900 bg-stone-900 text-white"
+                    : "border-stone-300 bg-white text-stone-700 hover:border-stone-400",
+                ].join(" ")}
+              >
+                {route.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <span className="self-center text-xs font-medium uppercase tracking-[0.2em] text-stone-500">
+            Relacionado
+          </span>
+          {relatedRoutes.map((route) => (
+            <button
+              key={route.id}
+              type="button"
+              onClick={() => navigateTo(route.path)}
+              className="rounded-full border border-stone-300 bg-stone-50 px-3 py-2 text-sm font-medium text-stone-700 transition hover:border-stone-400 hover:bg-white"
+            >
+              {route.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </header>
+  );
+}

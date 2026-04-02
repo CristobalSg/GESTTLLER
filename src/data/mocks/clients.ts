@@ -1,0 +1,68 @@
+import type { Client } from "@/types";
+
+export const clientsMock: Client[] = [
+  {
+    id: "cli-001",
+    firstName: "Marcela",
+    lastName: "Rojas",
+    phone: "+56 9 8765 1122",
+    email: "marcela.rojas@gmail.com",
+    documentId: "15.234.998-4",
+    address: {
+      city: "Santiago",
+      commune: "Maipu",
+      street: "Av. Pajaritos 2450",
+    },
+    notes: "Prefiere confirmaciones por WhatsApp en horario de tarde.",
+    preferredContact: "whatsapp",
+    createdAt: "2026-01-12T10:15:00.000Z",
+  },
+  {
+    id: "cli-002",
+    firstName: "Juan",
+    lastName: "Aravena",
+    phone: "+56 9 6644 2098",
+    email: "juan.aravena@correo.cl",
+    documentId: "13.887.441-2",
+    address: {
+      city: "Santiago",
+      commune: "Quinta Normal",
+      street: "Samuel Izquierdo 1185",
+    },
+    notes: "Solicita explicación detallada antes de aprobar reparaciones mayores.",
+    preferredContact: "phone",
+    createdAt: "2025-11-08T14:40:00.000Z",
+  },
+  {
+    id: "cli-003",
+    firstName: "Carolina",
+    lastName: "Mella",
+    phone: "+56 9 7211 4403",
+    email: "caro.mella@empresa.cl",
+    documentId: "17.992.310-5",
+    address: {
+      city: "Santiago",
+      commune: "Providencia",
+      street: "Los Leones 1555",
+    },
+    notes: "Vehículo de uso diario, necesita tiempos de entrega muy claros.",
+    preferredContact: "email",
+    createdAt: "2026-02-03T09:00:00.000Z",
+  },
+  {
+    id: "cli-004",
+    firstName: "Luis",
+    lastName: "Contreras",
+    phone: "+56 9 9355 7721",
+    email: "lcontreras@hotmail.com",
+    documentId: "12.443.109-7",
+    address: {
+      city: "Santiago",
+      commune: "Pudahuel",
+      street: "San Daniel 945",
+    },
+    notes: "Cliente frecuente para mantenciones y revisión pre-viaje.",
+    preferredContact: "whatsapp",
+    createdAt: "2025-09-26T16:25:00.000Z",
+  },
+];
