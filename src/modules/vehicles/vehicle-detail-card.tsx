@@ -1,4 +1,9 @@
 import type { Vehicle } from "@/types";
+import {
+  getClientDisplayName,
+  getVehicleDisplayName,
+  getVehicleTechnicalSummary,
+} from "@/utils/entity-display";
 
 import type { VehicleWithRelations } from "./use-vehicles-storage";
 
@@ -67,12 +72,24 @@ export function VehicleDetailCard({
       <div className="flex flex-col gap-4 border-b border-stone-200 pb-5 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.24em] text-stone-500">Detalle</p>
-          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-stone-950">
-            {vehicle.brand} {vehicle.model}
-          </h2>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <h2 className="text-2xl font-semibold tracking-tight text-stone-950">
+              {getVehicleDisplayName(vehicle)}
+            </h2>
+            {vehicle.isProvisional ? (
+              <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800">
+                Provisional
+              </span>
+            ) : null}
+          </div>
           <p className="mt-2 text-sm leading-6 text-stone-600">
-            Patente {vehicle.licensePlate} · registrado el {formatDate(vehicle.createdAt)}.
+            {vehicle.licensePlate ? `Patente ${vehicle.licensePlate}` : "Patente pendiente"} · registrado el {formatDate(vehicle.createdAt)}.
           </p>
+          {vehicle.isProvisional ? (
+            <p className="mt-2 text-sm leading-6 text-amber-700">
+              Este vehículo fue creado provisionalmente desde agenda y aún necesita completar su ficha.
+            </p>
+          ) : null}
         </div>
 
         <button
@@ -90,11 +107,11 @@ export function VehicleDetailCard({
           <dl className="mt-4 grid gap-3 text-sm">
             <div>
               <dt className="text-stone-500">Año</dt>
-              <dd className="mt-1 font-medium text-stone-900">{vehicle.year}</dd>
+              <dd className="mt-1 font-medium text-stone-900">{vehicle.year > 0 ? vehicle.year : "Pendiente"}</dd>
             </div>
             <div>
               <dt className="text-stone-500">Color</dt>
-              <dd className="mt-1 font-medium text-stone-900">{vehicle.color}</dd>
+              <dd className="mt-1 font-medium text-stone-900">{vehicle.color || "Pendiente"}</dd>
             </div>
             <div>
               <dt className="text-stone-500">Combustible</dt>
@@ -106,7 +123,9 @@ export function VehicleDetailCard({
             </div>
             <div>
               <dt className="text-stone-500">Kilometraje</dt>
-              <dd className="mt-1 font-medium text-stone-900">{vehicle.mileageKm.toLocaleString("es-CL")} km</dd>
+              <dd className="mt-1 font-medium text-stone-900">
+                {vehicle.mileageKm > 0 ? `${vehicle.mileageKm.toLocaleString("es-CL")} km` : "Pendiente"}
+              </dd>
             </div>
             <div>
               <dt className="text-stone-500">VIN</dt>
@@ -120,10 +139,10 @@ export function VehicleDetailCard({
           {vehicle.client ? (
             <div className="mt-4 space-y-3 text-sm">
               <p className="font-medium text-stone-900">
-                {vehicle.client.firstName} {vehicle.client.lastName}
+                {getClientDisplayName(vehicle.client)}
               </p>
-              <p className="text-stone-600">{vehicle.client.phone}</p>
-              <p className="text-stone-600">{vehicle.client.email}</p>
+              <p className="text-stone-600">{vehicle.client.phone || "Teléfono pendiente"}</p>
+              <p className="text-stone-600">{vehicle.client.email || "Correo pendiente"}</p>
             </div>
           ) : (
             <p className="mt-4 text-sm leading-6 text-stone-600">
@@ -147,6 +166,7 @@ export function VehicleDetailCard({
         <p className="mt-4 text-sm leading-6 text-stone-700">
           {vehicle.notes || "Sin observaciones registradas para este vehículo."}
         </p>
+        <p className="mt-3 text-sm text-stone-500">{getVehicleTechnicalSummary(vehicle)}</p>
       </div>
 
       <div className="mt-6 rounded-3xl border border-stone-200 bg-stone-50 p-5">

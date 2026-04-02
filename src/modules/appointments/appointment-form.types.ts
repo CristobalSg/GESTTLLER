@@ -1,8 +1,8 @@
 import type { Appointment } from "@/types";
 
 export type AppointmentFormValues = {
-  clientId: string;
-  vehicleId: string;
+  clientQuery: string;
+  vehicleQuery: string;
   date: string;
   startTime: string;
   estimatedDurationMinutes: string;
@@ -12,8 +12,8 @@ export type AppointmentFormValues = {
 
 export function getEmptyAppointmentFormValues(): AppointmentFormValues {
   return {
-    clientId: "",
-    vehicleId: "",
+    clientQuery: "",
+    vehicleQuery: "",
     date: "",
     startTime: "",
     estimatedDurationMinutes: "45",
@@ -24,8 +24,8 @@ export function getEmptyAppointmentFormValues(): AppointmentFormValues {
 
 export function getAppointmentFormValues(appointment: Appointment): AppointmentFormValues {
   return {
-    clientId: appointment.clientId,
-    vehicleId: appointment.vehicleId,
+    clientQuery: appointment.clientId,
+    vehicleQuery: appointment.vehicleId,
     date: appointment.date,
     startTime: appointment.startTime,
     estimatedDurationMinutes: String(appointment.estimatedDurationMinutes),

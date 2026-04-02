@@ -18,6 +18,8 @@
 
 html {
   scroll-behavior: smooth;
+  overscroll-behavior: none;
+  touch-action: manipulation;
 }
 
 body {
@@ -25,6 +27,8 @@ body {
   min-width: 320px;
   min-height: 100vh;
   line-height: 1.5;
+  overflow-x: hidden;
+  overscroll-behavior: none;
 }
 
 a {
@@ -48,6 +52,7 @@ input[type="time"] {
 
 #root {
   min-height: 100vh;
+  overscroll-behavior: none;
 }
 
 img {

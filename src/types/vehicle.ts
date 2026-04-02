@@ -7,6 +7,7 @@ export type VehicleTransmission = "manual" | "automatic" | "cvt";
 export interface Vehicle {
   id: EntityId;
   clientId: EntityId;
+  displayName?: string;
   licensePlate: string;
   vin?: string;
   brand: string;
@@ -18,5 +19,6 @@ export interface Vehicle {
   mileageKm: number;
   notes: string;
   lastServiceAt?: ISODateString;
+  isProvisional?: boolean;
   createdAt: ISODateString;
 }

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import type { Client, Vehicle } from "@/types";
+import { getClientDisplayName, getVehicleDisplayName, normalizeText } from "@/utils/entity-display";
 
 import {
   getEmptyAppointmentFormValues,
@@ -19,25 +20,12 @@ type FormErrors = Partial<Record<keyof AppointmentFormValues, string>>;
 function validateAppointmentForm(values: AppointmentFormValues): FormErrors {
   const errors: FormErrors = {};
 
-  if (!values.clientId) {
-    errors.clientId = "Selecciona un cliente.";
-  }
-
-  if (!values.vehicleId) {
-    errors.vehicleId = "Selecciona un vehículo.";
-  }
-
   if (!values.date) {
     errors.date = "Selecciona una fecha.";
   }
 
   if (!values.startTime) {
     errors.startTime = "Ingresa una hora.";
-  }
-
-  const duration = Number(values.estimatedDurationMinutes);
-  if (!values.estimatedDurationMinutes || Number.isNaN(duration) || duration <= 0) {
-    errors.estimatedDurationMinutes = "Ingresa una duración válida.";
   }
 
   if (!values.reason.trim()) {
@@ -64,27 +52,25 @@ export function AppointmentForm({ clients, vehicles, onCancel, onSubmit }: Appoi
     setErrors({});
   }, []);
 
-  const availableVehicles = useMemo(
-    () => vehicles.filter((vehicle) => vehicle.clientId === values.clientId),
-    [vehicles, values.clientId]
+  const selectedClient = useMemo(
+    () =>
+      clients.find((client) => normalizeText(getClientDisplayName(client)) === normalizeText(values.clientQuery)),
+    [clients, values.clientQuery]
   );
 
+  const availableVehicles = useMemo(() => {
+    if (!selectedClient) {
+      return vehicles;
+    }
+
+    return vehicles.filter((vehicle) => vehicle.clientId === selectedClient.id);
+  }, [selectedClient, vehicles]);
+
   function updateField<K extends keyof AppointmentFormValues>(field: K, value: AppointmentFormValues[K]) {
-    setValues((currentValues) => {
-      const nextValues = {
-        ...currentValues,
-        [field]: value,
-      };
-
-      if (field === "clientId") {
-        return {
-          ...nextValues,
-          vehicleId: "",
-        };
-      }
-
-      return nextValues;
-    });
+    setValues((currentValues) => ({
+      ...currentValues,
+      [field]: value,
+    }));
   }
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -114,7 +100,7 @@ export function AppointmentForm({ clients, vehicles, onCancel, onSubmit }: Appoi
         <p className="text-xs font-medium uppercase tracking-[0.24em] text-stone-500">Nueva cita</p>
         <h2 className="mt-2 text-2xl font-semibold tracking-tight text-stone-950">Registrar atención</h2>
         <p className="mt-2 text-sm leading-6 text-stone-600">
-          Crea una cita simple del taller asociando cliente, vehículo, fecha, hora y duración estimada.
+          Agenda rápido una atención. Si el cliente o vehículo no existen, quedarán como provisionales para completarlos después.
         </p>
       </div>
 
@@ -122,37 +108,40 @@ export function AppointmentForm({ clients, vehicles, onCancel, onSubmit }: Appoi
         <div className="grid gap-4 md:grid-cols-2">
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-stone-700">Cliente</span>
-            <select
-              value={values.clientId}
-              onChange={(event) => updateField("clientId", event.target.value)}
-              className="w-full rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-amber-500 focus:bg-white"
-            >
-              <option value="">Selecciona un cliente</option>
+            <input
+              list="appointment-client-suggestions"
+              value={values.clientQuery}
+              onChange={(event) => updateField("clientQuery", event.target.value)}
+              placeholder="Escribe el nombre del cliente"
+              className="w-full rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 text-sm text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-amber-500 focus:bg-white"
+            />
+            <datalist id="appointment-client-suggestions">
               {clients.map((client) => (
-                <option key={client.id} value={client.id}>
-                  {client.firstName} {client.lastName}
-                </option>
+                <option key={client.id} value={getClientDisplayName(client)} />
               ))}
-            </select>
-            <FieldError message={errors.clientId} />
+            </datalist>
+            <p className="mt-2 text-xs leading-5 text-stone-500">
+              Si no existe, se crea un cliente provisional visible luego en el módulo de clientes.
+            </p>
           </label>
 
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-stone-700">Vehículo</span>
-            <select
-              value={values.vehicleId}
-              onChange={(event) => updateField("vehicleId", event.target.value)}
-              disabled={!values.clientId}
-              className="w-full rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 text-sm text-stone-900 outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-amber-500 focus:bg-white"
-            >
-              <option value="">{values.clientId ? "Selecciona un vehículo" : "Selecciona primero un cliente"}</option>
+            <input
+              list="appointment-vehicle-suggestions"
+              value={values.vehicleQuery}
+              onChange={(event) => updateField("vehicleQuery", event.target.value)}
+              placeholder="Patente, modelo o referencia"
+              className="w-full rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 text-sm text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-amber-500 focus:bg-white"
+            />
+            <datalist id="appointment-vehicle-suggestions">
               {availableVehicles.map((vehicle) => (
-                <option key={vehicle.id} value={vehicle.id}>
-                  {vehicle.licensePlate} · {vehicle.brand} {vehicle.model}
-                </option>
+                <option key={vehicle.id} value={getVehicleDisplayName(vehicle)} />
               ))}
-            </select>
-            <FieldError message={errors.vehicleId} />
+            </datalist>
+            <p className="mt-2 text-xs leading-5 text-stone-500">
+              Es opcional. Si no existe, se guarda como vehículo provisional para completarlo después.
+            </p>
           </label>
         </div>
 
@@ -189,7 +178,7 @@ export function AppointmentForm({ clients, vehicles, onCancel, onSubmit }: Appoi
               onChange={(event) => updateField("estimatedDurationMinutes", event.target.value)}
               className="w-full rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-amber-500 focus:bg-white"
             />
-            <FieldError message={errors.estimatedDurationMinutes} />
+            <p className="mt-2 text-xs leading-5 text-stone-500">Opcional. Si lo dejas vacío, se usarán 45 min.</p>
           </label>
         </div>
 

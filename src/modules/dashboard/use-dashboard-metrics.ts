@@ -149,6 +149,18 @@ export function useDashboardMetrics() {
       .sort((left, right) => `${left.date}${left.startTime}`.localeCompare(`${right.date}${right.startTime}`))
       .slice(0, 5);
 
+    const pendingAppointmentsCount = collections.appointments.filter(
+      (appointment) => appointment.status !== "cancelled" && appointment.date >= today
+    ).length;
+
+    const todayAppointmentsCount = collections.appointments.filter(
+      (appointment) => appointment.status !== "cancelled" && appointment.date === today
+    ).length;
+
+    const activeWorkOrdersCount = collections.workOrders.filter((order) =>
+      ["open", "in-progress", "waiting-parts"].includes(order.status)
+    ).length;
+
     return {
       totalAppointments: collections.appointments.length,
       totalCharged,
@@ -157,9 +169,12 @@ export function useDashboardMetrics() {
       totalVehicles: collections.vehicles.length,
       totalWorkOrders: collections.workOrders.length,
       approvedQuotesCount: approvedQuotes.length,
+      activeWorkOrdersCount,
       rejectedQuotesCount: rejectedQuotes.length,
       incomeByPeriod,
       mostFrequentJobs,
+      pendingAppointmentsCount,
+      todayAppointmentsCount,
       upcomingAppointments,
     };
   }, [collections]);

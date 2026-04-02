@@ -1,4 +1,5 @@
 export type AppRouteId =
+  | "home"
   | "dashboard"
   | "clients"
   | "vehicles"
@@ -17,9 +18,15 @@ export type AppRoute = {
 
 export const appRoutes: AppRoute[] = [
   {
+    id: "home",
+    label: "Inicio",
+    path: "/",
+    description: "Vista rápida con citas pendientes y métricas clave del taller.",
+  },
+  {
     id: "dashboard",
     label: "Dashboard",
-    path: "/",
+    path: "/dashboard",
     description: "Resumen general de la operación del taller.",
   },
   {
@@ -73,6 +80,7 @@ export function getRouteByPath(pathname: string): AppRoute {
 }
 
 export const relatedRoutesById: Record<AppRouteId, AppRouteId[]> = {
+  home: ["appointments", "work-orders", "dashboard"],
   dashboard: ["appointments", "quotes", "work-orders"],
   clients: ["vehicles", "appointments", "quotes"],
   vehicles: ["clients", "intake", "work-orders"],

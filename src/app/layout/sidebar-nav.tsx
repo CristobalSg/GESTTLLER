@@ -3,6 +3,7 @@ import { navigateTo } from "../routes/navigation";
 import { useCurrentRoute } from "../routes/use-current-route";
 
 const sectionLabel: Record<string, string> = {
+  home: "Panel",
   dashboard: "Panel",
   clients: "Gestión",
   vehicles: "Gestión",
@@ -14,14 +15,15 @@ const sectionLabel: Record<string, string> = {
 };
 
 const routeIcon: Record<string, string> = {
-  dashboard: "01",
-  clients: "02",
-  vehicles: "03",
-  appointments: "04",
-  intake: "05",
-  quotes: "06",
-  "work-orders": "07",
-  reports: "08",
+  home: "01",
+  dashboard: "02",
+  clients: "03",
+  vehicles: "04",
+  appointments: "05",
+  intake: "06",
+  quotes: "07",
+  "work-orders": "08",
+  reports: "09",
 };
 
 export function SidebarNav() {

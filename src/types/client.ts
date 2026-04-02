@@ -10,5 +10,6 @@ export interface Client {
   address?: Address;
   notes: string;
   preferredContact: "phone" | "whatsapp" | "email";
+  isProvisional?: boolean;
   createdAt: ISODateString;
 }

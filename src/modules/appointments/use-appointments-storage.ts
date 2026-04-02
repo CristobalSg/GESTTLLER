@@ -2,6 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 
 import { appointmentsMock, clientsMock, vehiclesMock } from "@/data/mocks";
 import type { Appointment, AppointmentStatus, Client, Vehicle } from "@/types";
+import {
+  getClientDisplayName,
+  getVehicleDisplayName,
+  normalizeText,
+  splitClientName,
+} from "@/utils/entity-display";
 
 import type { AppointmentFormValues } from "./appointment-form.types";
 
@@ -84,13 +90,80 @@ function calculateEndTime(startTime: string, durationMinutes: number) {
   return `${padTimeUnit(normalizedHours)}:${padTimeUnit(normalizedMinutes)}`;
 }
 
-function buildAppointmentPayload(values: AppointmentFormValues): Appointment {
-  const estimatedDurationMinutes = Number(values.estimatedDurationMinutes);
+function buildProvisionalClient(name: string): Client {
+  const now = new Date().toISOString();
+  const parsedName = splitClientName(name);
+
+  return {
+    id: `cli-${crypto.randomUUID().slice(0, 8)}`,
+    firstName: parsedName.firstName,
+    lastName: parsedName.lastName,
+    phone: "",
+    email: "",
+    notes: "Registro provisional creado desde agenda.",
+    preferredContact: "phone",
+    isProvisional: true,
+    createdAt: now,
+  };
+}
+
+function buildProvisionalVehicle(label: string, clientId: string): Vehicle {
+  return {
+    id: `veh-${crypto.randomUUID().slice(0, 8)}`,
+    clientId,
+    displayName: label.trim(),
+    licensePlate: "",
+    brand: "",
+    model: "",
+    year: 0,
+    color: "",
+    fuelType: "gasoline",
+    transmission: "manual",
+    mileageKm: 0,
+    notes: "Registro provisional creado desde agenda.",
+    isProvisional: true,
+    createdAt: new Date().toISOString(),
+  };
+}
+
+function findClientByQuery(clients: Client[], query: string) {
+  const normalizedQuery = normalizeText(query);
+
+  if (!normalizedQuery) {
+    return undefined;
+  }
+
+  return clients.find((client) => normalizeText(getClientDisplayName(client)) === normalizedQuery);
+}
+
+function findVehicleByQuery(vehicles: Vehicle[], query: string) {
+  const normalizedQuery = normalizeText(query);
+
+  if (!normalizedQuery) {
+    return undefined;
+  }
+
+  return vehicles.find((vehicle) =>
+    [
+      getVehicleDisplayName(vehicle),
+      vehicle.licensePlate,
+      [vehicle.brand, vehicle.model].filter(Boolean).join(" "),
+    ]
+      .filter(Boolean)
+      .some((field) => normalizeText(field) === normalizedQuery)
+  );
+}
+
+function buildAppointmentPayload(
+  values: AppointmentFormValues,
+  relations: { clientId?: string; vehicleId?: string }
+): Appointment {
+  const estimatedDurationMinutes = Number(values.estimatedDurationMinutes) > 0 ? Number(values.estimatedDurationMinutes) : 45;
 
   return {
     id: `app-${crypto.randomUUID().slice(0, 8)}`,
-    clientId: values.clientId,
-    vehicleId: values.vehicleId,
+    clientId: relations.clientId ?? "",
+    vehicleId: relations.vehicleId ?? "",
     date: values.date,
     startTime: values.startTime,
     endTime: calculateEndTime(values.startTime, estimatedDurationMinutes),
@@ -144,7 +217,28 @@ export function useAppointmentsStorage() {
   );
 
   function createAppointment(values: AppointmentFormValues) {
-    const nextAppointment = buildAppointmentPayload(values);
+    let nextClients = clients;
+    let nextVehicles = vehicles;
+
+    let nextClient = findClientByQuery(nextClients, values.clientQuery);
+    if (!nextClient && values.clientQuery.trim()) {
+      nextClient = buildProvisionalClient(values.clientQuery);
+      nextClients = [nextClient, ...nextClients];
+      setClients(nextClients);
+    }
+
+    let nextVehicle = findVehicleByQuery(nextVehicles, values.vehicleQuery);
+    if (!nextVehicle && values.vehicleQuery.trim()) {
+      nextVehicle = buildProvisionalVehicle(values.vehicleQuery, nextClient?.id ?? "");
+      nextVehicles = [nextVehicle, ...nextVehicles];
+      setVehicles(nextVehicles);
+    }
+
+    const nextAppointment = buildAppointmentPayload(values, {
+      clientId: nextClient?.id,
+      vehicleId: nextVehicle?.id,
+    });
+
     setAppointments((currentAppointments) =>
       [...currentAppointments, nextAppointment].sort((left, right) =>
         `${left.date}${left.startTime}`.localeCompare(`${right.date}${right.startTime}`)

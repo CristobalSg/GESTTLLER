@@ -1,4 +1,4 @@
-import type { Client } from "@/types";
+import { getClientDisplayName, getClientInitials } from "@/utils/entity-display";
 
 import type { ClientWithVehicles } from "./use-clients-storage";
 
@@ -10,10 +10,6 @@ type ClientsListProps = {
   onSelectClient: (clientId: string) => void;
   onCreateClient: () => void;
 };
-
-function getClientInitials(client: Client) {
-  return `${client.firstName.charAt(0)}${client.lastName.charAt(0)}`.toUpperCase();
-}
 
 export function ClientsList({
   clients,
@@ -83,14 +79,19 @@ export function ClientsList({
                 </span>
 
                 <span className="min-w-0 flex-1">
-                  <span className="block text-base font-semibold">
-                    {client.firstName} {client.lastName}
+                  <span className="flex flex-wrap items-center gap-2">
+                    <span className="block text-base font-semibold">{getClientDisplayName(client)}</span>
+                    {client.isProvisional ? (
+                      <span className={["rounded-full px-3 py-1 text-[11px] font-medium", isActive ? "bg-white/10 text-stone-200" : "bg-amber-100 text-amber-800"].join(" ")}>
+                        Provisional
+                      </span>
+                    ) : null}
                   </span>
                   <span className={["mt-1 block text-sm", isActive ? "text-stone-300" : "text-stone-600"].join(" ")}>
-                    {client.phone}
+                    {client.phone || "Teléfono pendiente"}
                   </span>
                   <span className={["mt-1 block truncate text-sm", isActive ? "text-stone-300" : "text-stone-600"].join(" ")}>
-                    {client.email}
+                    {client.email || "Correo pendiente"}
                   </span>
                   <span className={["mt-3 inline-flex rounded-full px-3 py-1 text-xs font-medium", isActive ? "bg-white/10 text-stone-200" : "bg-stone-200 text-stone-700"].join(" ")}>
                     {client.vehicles.length} vehículo{client.vehicles.length === 1 ? "" : "s"}

@@ -1,3 +1,4 @@
+import { HomePage } from "../../modules/home/home-page";
 import { DashboardPage } from "../../modules/dashboard/dashboard-page";
 import { ClientsPage } from "../../modules/clients/clients-page";
 import { VehiclesPage } from "../../modules/vehicles/vehicles-page";
@@ -9,6 +10,7 @@ import { ReportsPage } from "../../modules/reports/reports-page";
 import { useCurrentRoute } from "./use-current-route";
 
 const routeComponents = {
+  home: HomePage,
   dashboard: DashboardPage,
   clients: ClientsPage,
   vehicles: VehiclesPage,

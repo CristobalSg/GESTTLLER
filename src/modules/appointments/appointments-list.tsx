@@ -1,5 +1,6 @@
 import type { AppointmentWithRelations } from "./use-appointments-storage";
 import { AppointmentStatusSelect } from "./appointment-status-select";
+import { getClientDisplayName, getVehicleDisplayName } from "@/utils/entity-display";
 
 type AppointmentsListProps = {
   appointments: AppointmentWithRelations[];
@@ -69,13 +70,9 @@ export function AppointmentsList({ appointments, onStatusChange }: AppointmentsL
 
                         <h4 className="mt-3 text-base font-semibold text-stone-950">{appointment.reason}</h4>
                         <p className="mt-2 text-sm text-stone-700">
-                          {appointment.client
-                            ? `${appointment.client.firstName} ${appointment.client.lastName}`
-                            : "Cliente sin relación"}
+                          {getClientDisplayName(appointment.client)}
                           {" · "}
-                          {appointment.vehicle
-                            ? `${appointment.vehicle.licensePlate} · ${appointment.vehicle.brand} ${appointment.vehicle.model}`
-                            : "Vehículo sin relación"}
+                          {getVehicleDisplayName(appointment.vehicle)}
                         </p>
 
                         <p className="mt-2 text-sm leading-6 text-stone-600">

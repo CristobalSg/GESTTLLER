@@ -1,4 +1,5 @@
 import type { AppointmentWithRelations } from "./use-appointments-storage";
+import { getClientDisplayName, getVehicleDisplayName } from "@/utils/entity-display";
 
 type UpcomingAppointmentsProps = {
   appointments: AppointmentWithRelations[];
@@ -33,14 +34,10 @@ export function UpcomingAppointments({ appointments }: UpcomingAppointmentsProps
                 · {appointment.startTime}
               </p>
               <p className="mt-2 text-sm text-stone-700">
-                {appointment.client
-                  ? `${appointment.client.firstName} ${appointment.client.lastName}`
-                  : "Cliente sin relación"}
+                {getClientDisplayName(appointment.client)}
               </p>
               <p className="mt-1 text-sm text-stone-600">
-                {appointment.vehicle
-                  ? `${appointment.vehicle.licensePlate} · ${appointment.vehicle.brand} ${appointment.vehicle.model}`
-                  : "Vehículo sin relación"}
+                {getVehicleDisplayName(appointment.vehicle)}
               </p>
               <p className="mt-2 text-sm leading-6 text-stone-600">{appointment.reason}</p>
             </article>

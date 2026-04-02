@@ -1,4 +1,4 @@
-import type { Vehicle } from "@/types";
+import { getClientDisplayName, getVehicleBadge, getVehicleDisplayName, getVehicleTechnicalSummary } from "@/utils/entity-display";
 
 import type { VehicleWithRelations } from "./use-vehicles-storage";
 
@@ -10,10 +10,6 @@ type VehiclesListProps = {
   onSelectVehicle: (vehicleId: string) => void;
   onCreateVehicle: () => void;
 };
-
-function getVehicleBadge(vehicle: Vehicle) {
-  return vehicle.licensePlate.slice(0, 3).toUpperCase();
-}
 
 export function VehiclesList({
   vehicles,
@@ -79,21 +75,26 @@ export function VehiclesList({
                     isActive ? "bg-white/12 text-white" : "bg-amber-100 text-amber-700",
                   ].join(" ")}
                 >
-                  {getVehicleBadge(vehicle)}
+                    {getVehicleBadge(vehicle)}
                 </span>
 
                 <span className="min-w-0 flex-1">
-                  <span className="block text-base font-semibold">
-                    {vehicle.brand} {vehicle.model}
+                  <span className="flex flex-wrap items-center gap-2">
+                    <span className="block text-base font-semibold">{getVehicleDisplayName(vehicle)}</span>
+                    {vehicle.isProvisional ? (
+                      <span className={["rounded-full px-3 py-1 text-[11px] font-medium", isActive ? "bg-white/10 text-stone-200" : "bg-amber-100 text-amber-800"].join(" ")}>
+                        Provisional
+                      </span>
+                    ) : null}
                   </span>
                   <span className={["mt-1 block text-sm font-medium", isActive ? "text-stone-200" : "text-stone-700"].join(" ")}>
-                    {vehicle.licensePlate}
+                    {vehicle.licensePlate || "Patente pendiente"}
                   </span>
                   <span className={["mt-1 block truncate text-sm", isActive ? "text-stone-300" : "text-stone-600"].join(" ")}>
-                    {vehicle.client ? `${vehicle.client.firstName} ${vehicle.client.lastName}` : "Cliente sin asociación"}
+                    {vehicle.client ? getClientDisplayName(vehicle.client) : "Cliente sin asociación"}
                   </span>
                   <span className={["mt-3 inline-flex rounded-full px-3 py-1 text-xs font-medium", isActive ? "bg-white/10 text-stone-200" : "bg-stone-200 text-stone-700"].join(" ")}>
-                    {vehicle.year} · {vehicle.mileageKm.toLocaleString("es-CL")} km
+                    {getVehicleTechnicalSummary(vehicle)}
                   </span>
                 </span>
               </button>
