@@ -10,6 +10,7 @@ import type { ClientWithVehicles } from "./use-clients-storage";
 type ClientDetailCardProps = {
   client?: ClientWithVehicles;
   onEditClient: (client: Client) => void;
+  onAddVehicle: (client: Client) => void;
   onCreateClient: () => void;
 };
 
@@ -30,7 +31,7 @@ function getPreferredContactLabel(preferredContact: Client["preferredContact"]) 
   }
 }
 
-export function ClientDetailCard({ client, onEditClient, onCreateClient }: ClientDetailCardProps) {
+export function ClientDetailCard({ client, onEditClient, onAddVehicle, onCreateClient }: ClientDetailCardProps) {
   if (!client) {
     return (
       <section className="rounded-[28px] border border-stone-200/80 bg-white/90 p-6 shadow-[0_18px_50px_rgba(120,113,108,0.12)]">
@@ -133,25 +134,44 @@ export function ClientDetailCard({ client, onEditClient, onCreateClient }: Clien
         </div>
 
         {client.vehicles.length > 0 ? (
-          <div className="mt-4 grid gap-3">
-            {client.vehicles.map((vehicle) => (
-              <article key={vehicle.id} className="rounded-2xl border border-stone-200 bg-white p-4">
-                <p className="text-sm font-semibold text-stone-950">
-                  {getVehicleDisplayName(vehicle)}
-                </p>
-                <p className="mt-1 text-sm text-stone-600">
-                  {vehicle.licensePlate ? `Patente ${vehicle.licensePlate}` : "Patente pendiente"}
-                </p>
-                <p className="mt-2 text-sm text-stone-600">
-                  {getVehicleTechnicalSummary(vehicle)}
-                </p>
-              </article>
-            ))}
+          <div className="mt-4">
+            <div className="grid gap-3">
+              {client.vehicles.map((vehicle) => (
+                <article key={vehicle.id} className="rounded-2xl border border-stone-200 bg-white p-4">
+                  <p className="text-sm font-semibold text-stone-950">
+                    {getVehicleDisplayName(vehicle)}
+                  </p>
+                  <p className="mt-1 text-sm text-stone-600">
+                    {vehicle.licensePlate ? `Patente ${vehicle.licensePlate}` : "Patente pendiente"}
+                  </p>
+                  <p className="mt-2 text-sm text-stone-600">
+                    {getVehicleTechnicalSummary(vehicle)}
+                  </p>
+                </article>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => onAddVehicle(client)}
+              className="mt-4 inline-flex rounded-2xl border border-stone-300 bg-white px-4 py-3 text-sm font-semibold text-stone-800 transition hover:border-stone-400"
+            >
+              Agregar vehículo
+            </button>
           </div>
         ) : (
-          <p className="mt-4 text-sm leading-6 text-stone-600">
-            Este cliente aún no tiene vehículos asociados en el prototipo.
-          </p>
+          <div className="mt-4">
+            <p className="text-sm leading-6 text-stone-600">
+              Este cliente aún no tiene vehículos asociados en el prototipo.
+            </p>
+            <button
+              type="button"
+              onClick={() => onAddVehicle(client)}
+              className="mt-4 inline-flex rounded-2xl border border-stone-300 bg-white px-4 py-3 text-sm font-semibold text-stone-800 transition hover:border-stone-400"
+            >
+              Registrar primer vehículo
+            </button>
+          </div>
         )}
       </div>
     </section>

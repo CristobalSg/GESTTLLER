@@ -2,12 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 
 import { appointmentsMock, clientsMock, vehiclesMock } from "@/data/mocks";
 import type { Appointment, Client, Vehicle } from "@/types";
+import {
+  APPOINTMENTS_STORAGE_KEY,
+  CLIENTS_STORAGE_KEY,
+  VEHICLES_STORAGE_KEY,
+  notifyStorageSync,
+  subscribeToStorageKey,
+} from "@/utils/storage-sync";
 
 import type { VehicleFormValues } from "./vehicle-form.types";
-
-const VEHICLES_STORAGE_KEY = "gesttller:vehicles:v1";
-const CLIENTS_STORAGE_KEY = "gesttller:clients:v1";
-const APPOINTMENTS_STORAGE_KEY = "gesttller:appointments:v1";
 
 export type VehicleWithRelations = Vehicle & {
   client?: Client;
@@ -107,24 +110,29 @@ export function useVehiclesStorage() {
 
   useEffect(() => {
     window.localStorage.setItem(VEHICLES_STORAGE_KEY, JSON.stringify(vehicles));
+    notifyStorageSync(VEHICLES_STORAGE_KEY);
   }, [vehicles]);
 
   useEffect(() => {
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key === CLIENTS_STORAGE_KEY) {
-        setClients(readStoredClients());
-      }
+    const unsubscribeVehicles = subscribeToStorageKey(VEHICLES_STORAGE_KEY, () => {
+      setVehicles(readStoredVehicles());
+    });
+    const unsubscribeClients = subscribeToStorageKey(CLIENTS_STORAGE_KEY, () => {
+      setClients(readStoredClients());
+    });
+    const unsubscribeAppointments = subscribeToStorageKey(APPOINTMENTS_STORAGE_KEY, () => {
+      setAppointments(readStoredAppointments());
+    });
 
-      if (event.key === APPOINTMENTS_STORAGE_KEY) {
-        setAppointments(readStoredAppointments());
-      }
-    };
-
-    window.addEventListener("storage", handleStorage);
+    setVehicles(readStoredVehicles());
     setClients(readStoredClients());
     setAppointments(readStoredAppointments());
 
-    return () => window.removeEventListener("storage", handleStorage);
+    return () => {
+      unsubscribeVehicles();
+      unsubscribeClients();
+      unsubscribeAppointments();
+    };
   }, []);
 
   const vehiclesWithRelations = useMemo<VehicleWithRelations[]>(

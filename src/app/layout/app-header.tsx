@@ -1,33 +1,42 @@
 import { useEffect, useState } from "react";
-import { appRoutes, relatedRoutesById } from "../routes/routes";
+
+import { ModalShell } from "../../components/shared/modal-shell";
+import { AppointmentForm } from "../../modules/appointments/appointment-form";
+import type { AppointmentFormValues } from "../../modules/appointments/appointment-form.types";
+import { useAppointmentsStorage } from "../../modules/appointments/use-appointments-storage";
 import { navigateTo } from "../routes/navigation";
+import { appRoutes, relatedRoutesById } from "../routes/routes";
 import { useCurrentRoute } from "../routes/use-current-route";
 
 export function AppHeader() {
   const currentRoute = useCurrentRoute();
   const relatedRoutes = appRoutes.filter((route) => relatedRoutesById[currentRoute.id].includes(route.id));
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const appointmentsRoute = appRoutes.find((route) => route.id === "appointments");
+  const [isQuickAppointmentOpen, setIsQuickAppointmentOpen] = useState(false);
+  const { clients, vehicles, createAppointment } = useAppointmentsStorage();
 
   useEffect(() => {
     setIsMenuOpen(false);
+    setIsQuickAppointmentOpen(false);
   }, [currentRoute.id]);
 
   useEffect(() => {
-    if (typeof document === "undefined") {
+    if (typeof document === "undefined" || !isMenuOpen) {
       return;
     }
 
     const previousOverflow = document.body.style.overflow;
-
-    if (isMenuOpen) {
-      document.body.style.overflow = "hidden";
-    }
+    document.body.style.overflow = "hidden";
 
     return () => {
       document.body.style.overflow = previousOverflow;
     };
   }, [isMenuOpen]);
+
+  function handleQuickAppointmentSubmit(values: AppointmentFormValues) {
+    createAppointment(values);
+    setIsQuickAppointmentOpen(false);
+  }
 
   return (
     <header className="sticky top-0 z-10 border-b border-stone-200/80 bg-white/80 backdrop-blur">
@@ -50,16 +59,14 @@ export function AppHeader() {
           </div>
 
           <div className="relative ml-auto flex items-center gap-2 lg:hidden">
-            {appointmentsRoute ? (
-              <button
-                type="button"
-                onClick={() => navigateTo(appointmentsRoute.path)}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-stone-300 bg-white text-lg font-semibold text-stone-900 shadow-sm transition hover:border-stone-400"
-                aria-label="Ir a agenda"
-              >
-                +
-              </button>
-            ) : null}
+            <button
+              type="button"
+              onClick={() => setIsQuickAppointmentOpen(true)}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-stone-300 bg-white text-lg font-semibold text-stone-900 shadow-sm transition hover:border-stone-400"
+              aria-label="Abrir acceso rápido para nueva cita"
+            >
+              +
+            </button>
 
             <button
               type="button"
@@ -97,21 +104,11 @@ export function AppHeader() {
                           type="button"
                           onClick={() => navigateTo(route.path)}
                           className={[
-                            "flex w-full items-start justify-between rounded-2xl px-3 py-3 text-left transition",
+                            "flex w-full items-center justify-between rounded-2xl px-3 py-3 text-left transition",
                             isActive ? "bg-stone-900 text-white" : "bg-stone-50 text-stone-800 hover:bg-stone-100",
                           ].join(" ")}
                         >
-                          <span>
-                            <span className="block text-sm font-semibold">{route.label}</span>
-                            <span
-                              className={[
-                                "mt-1 block text-xs leading-5",
-                                isActive ? "text-stone-300" : "text-stone-500",
-                              ].join(" ")}
-                            >
-                              {route.description}
-                            </span>
-                          </span>
+                          <span className="block text-sm font-semibold">{route.label}</span>
                         </button>
                       );
                     })}
@@ -160,6 +157,17 @@ export function AppHeader() {
           ))}
         </div>
       </div>
+
+      {isQuickAppointmentOpen ? (
+        <ModalShell onClose={() => setIsQuickAppointmentOpen(false)}>
+          <AppointmentForm
+            clients={clients}
+            vehicles={vehicles}
+            onCancel={() => setIsQuickAppointmentOpen(false)}
+            onSubmit={handleQuickAppointmentSubmit}
+          />
+        </ModalShell>
+      ) : null}
     </header>
   );
 }

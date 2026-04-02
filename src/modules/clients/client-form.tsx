@@ -8,6 +8,8 @@ import {
   type ClientFormValues,
 } from "./client-form.types";
 
+const PHONE_PREFIX = "+56";
+
 type ClientFormProps = {
   mode: "create" | "edit";
   client?: Client;
@@ -20,6 +22,7 @@ type FormErrors = Partial<Record<keyof ClientFormValues, string>>;
 function validateClientForm(values: ClientFormValues): FormErrors {
   const errors: FormErrors = {};
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const normalizedPhone = values.phone.replace(/\D/g, "");
 
   if (!values.firstName.trim()) {
     errors.firstName = "Ingresa el nombre.";
@@ -29,17 +32,15 @@ function validateClientForm(values: ClientFormValues): FormErrors {
     errors.lastName = "Ingresa el apellido.";
   }
 
-  if (!values.phone.trim()) {
+  if (!normalizedPhone) {
     errors.phone = "Ingresa un teléfono de contacto.";
   }
 
-  if (!values.email.trim()) {
-    errors.email = "Ingresa un correo.";
-  } else if (!emailPattern.test(values.email.trim())) {
+  if (values.email.trim() && !emailPattern.test(values.email.trim())) {
     errors.email = "Ingresa un correo válido.";
   }
 
-  if (values.phone.trim().length < 8) {
+  if (normalizedPhone && normalizedPhone.length < 8) {
     errors.phone = "Ingresa un teléfono válido.";
   }
 
@@ -54,15 +55,30 @@ function FieldError({ message }: { message?: string }) {
   return <p className="mt-2 text-sm text-red-600">{message}</p>;
 }
 
+function hasAdvancedValues(values: ClientFormValues) {
+  return Boolean(
+    values.email.trim() ||
+      values.documentId.trim() ||
+      values.street.trim() ||
+      values.commune.trim() ||
+      values.city.trim()
+  );
+}
+
 export function ClientForm({ mode, client, onCancel, onSubmit }: ClientFormProps) {
   const [values, setValues] = useState<ClientFormValues>(
     client ? getClientFormValues(client) : getEmptyClientFormValues()
   );
   const [errors, setErrors] = useState<FormErrors>({});
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState(() =>
+    hasAdvancedValues(client ? getClientFormValues(client) : getEmptyClientFormValues())
+  );
 
   useEffect(() => {
-    setValues(client ? getClientFormValues(client) : getEmptyClientFormValues());
+    const nextValues = client ? getClientFormValues(client) : getEmptyClientFormValues();
+    setValues(nextValues);
     setErrors({});
+    setIsAdvancedOpen(hasAdvancedValues(nextValues));
   }, [client, mode]);
 
   function updateField<K extends keyof ClientFormValues>(field: K, value: ClientFormValues[K]) {
@@ -82,7 +98,10 @@ export function ClientForm({ mode, client, onCancel, onSubmit }: ClientFormProps
       return;
     }
 
-    onSubmit(values);
+    onSubmit({
+      ...values,
+      phone: `${PHONE_PREFIX} ${values.phone.replace(/\D/g, "")}`.trim(),
+    });
   }
 
   return (
@@ -125,34 +144,19 @@ export function ClientForm({ mode, client, onCancel, onSubmit }: ClientFormProps
         <div className="grid gap-4 md:grid-cols-2">
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-stone-700">Teléfono</span>
-            <input
-              value={values.phone}
-              onChange={(event) => updateField("phone", event.target.value)}
-              className="w-full rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-amber-500 focus:bg-white"
-            />
+            <div className="flex overflow-hidden rounded-2xl border border-stone-300 bg-stone-50 transition focus-within:border-amber-500 focus-within:bg-white">
+              <span className="inline-flex items-center border-r border-stone-300 px-4 text-sm font-medium text-stone-500">
+                {PHONE_PREFIX}
+              </span>
+              <input
+                value={values.phone}
+                onChange={(event) => updateField("phone", event.target.value.replace(/\D/g, ""))}
+                inputMode="numeric"
+                placeholder="9 1234 5678"
+                className="w-full bg-transparent px-4 py-3 text-sm text-stone-900 outline-none placeholder:text-stone-400"
+              />
+            </div>
             <FieldError message={errors.phone} />
-          </label>
-
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-stone-700">Correo</span>
-            <input
-              type="email"
-              value={values.email}
-              onChange={(event) => updateField("email", event.target.value)}
-              className="w-full rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-amber-500 focus:bg-white"
-            />
-            <FieldError message={errors.email} />
-          </label>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-stone-700">Documento</span>
-            <input
-              value={values.documentId}
-              onChange={(event) => updateField("documentId", event.target.value)}
-              className="w-full rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-amber-500 focus:bg-white"
-            />
           </label>
 
           <label className="block">
@@ -171,34 +175,77 @@ export function ClientForm({ mode, client, onCancel, onSubmit }: ClientFormProps
           </label>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
-          <label className="block md:col-span-2">
-            <span className="mb-2 block text-sm font-medium text-stone-700">Calle</span>
-            <input
-              value={values.street}
-              onChange={(event) => updateField("street", event.target.value)}
-              className="w-full rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-amber-500 focus:bg-white"
-            />
-          </label>
+        <section className="rounded-3xl border border-stone-200 bg-stone-50/80">
+          <button
+            type="button"
+            onClick={() => setIsAdvancedOpen((currentValue) => !currentValue)}
+            className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left"
+            aria-expanded={isAdvancedOpen}
+          >
+            <span>
+              <span className="block text-sm font-semibold text-stone-900">Avanzados</span>
+              <span className="mt-1 block text-xs text-stone-500">
+                Correo, documento y dirección completa.
+              </span>
+            </span>
+            <span className="text-lg font-semibold text-stone-500">{isAdvancedOpen ? "−" : "+"}</span>
+          </button>
 
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-stone-700">Comuna</span>
-            <input
-              value={values.commune}
-              onChange={(event) => updateField("commune", event.target.value)}
-              className="w-full rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-amber-500 focus:bg-white"
-            />
-          </label>
-        </div>
+          {isAdvancedOpen ? (
+            <div className="space-y-4 border-t border-stone-200 px-4 py-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-stone-700">Correo</span>
+                  <input
+                    type="email"
+                    value={values.email}
+                    onChange={(event) => updateField("email", event.target.value)}
+                    className="w-full rounded-2xl border border-stone-300 bg-white px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-amber-500"
+                  />
+                  <FieldError message={errors.email} />
+                </label>
 
-        <label className="block">
-          <span className="mb-2 block text-sm font-medium text-stone-700">Ciudad</span>
-          <input
-            value={values.city}
-            onChange={(event) => updateField("city", event.target.value)}
-            className="w-full rounded-2xl border border-stone-300 bg-stone-50 px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-amber-500 focus:bg-white"
-          />
-        </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-stone-700">Documento</span>
+                  <input
+                    value={values.documentId}
+                    onChange={(event) => updateField("documentId", event.target.value)}
+                    className="w-full rounded-2xl border border-stone-300 bg-white px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-amber-500"
+                  />
+                </label>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                <label className="block md:col-span-2">
+                  <span className="mb-2 block text-sm font-medium text-stone-700">Calle</span>
+                  <input
+                    value={values.street}
+                    onChange={(event) => updateField("street", event.target.value)}
+                    className="w-full rounded-2xl border border-stone-300 bg-white px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-amber-500"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-stone-700">Comuna</span>
+                  <input
+                    value={values.commune}
+                    onChange={(event) => updateField("commune", event.target.value)}
+                    className="w-full rounded-2xl border border-stone-300 bg-white px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-amber-500"
+                  />
+                </label>
+              </div>
+
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-stone-700">Ciudad</span>
+                <input
+                  value={values.city}
+                  onChange={(event) => updateField("city", event.target.value)}
+                  className="w-full rounded-2xl border border-stone-300 bg-white px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-amber-500"
+                />
+              </label>
+            </div>
+          ) : null}
+        </section>
 
         <label className="block">
           <span className="mb-2 block text-sm font-medium text-stone-700">Notas</span>

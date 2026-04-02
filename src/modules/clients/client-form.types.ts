@@ -1,5 +1,9 @@
 import type { Client } from "@/types";
 
+function stripChilePrefix(phone: string) {
+  return phone.replace(/^\+56\s*/, "").trim();
+}
+
 export type ClientFormValues = {
   firstName: string;
   lastName: string;
@@ -32,7 +36,7 @@ export function getClientFormValues(client: Client): ClientFormValues {
   return {
     firstName: client.firstName,
     lastName: client.lastName,
-    phone: client.phone,
+    phone: stripChilePrefix(client.phone),
     email: client.email,
     documentId: client.documentId ?? "",
     preferredContact: client.preferredContact,

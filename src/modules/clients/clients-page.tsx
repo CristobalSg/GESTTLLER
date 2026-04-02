@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
+import { ModalShell } from "../../components/shared/modal-shell";
 import { PageShell } from "../../components/shared/page-shell";
 import type { Client } from "../../types";
 import { ClientDetailCard } from "./client-detail-card";
@@ -8,23 +9,27 @@ import type { ClientFormValues } from "./client-form.types";
 import { ClientsList } from "./clients-list";
 import { matchesClientSearch } from "./clients-search";
 import { useClientsStorage } from "./use-clients-storage";
+import { VehicleForm } from "../vehicles/vehicle-form";
+import type { VehicleFormValues } from "../vehicles/vehicle-form.types";
+import { useVehiclesStorage } from "../vehicles/use-vehicles-storage";
 
 type PanelMode = "detail" | "create" | "edit";
 
 export function ClientsPage() {
   const { clientsWithVehicles, createClient, updateClient } = useClientsStorage();
+  const { createVehicle } = useVehiclesStorage();
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedClientId, setSelectedClientId] = useState<string | undefined>(clientsWithVehicles[0]?.id);
+  const [selectedClientId, setSelectedClientId] = useState<string | undefined>();
   const [panelMode, setPanelMode] = useState<PanelMode>("detail");
   const [editingClient, setEditingClient] = useState<Client | undefined>();
+  const [vehicleOwnerClientId, setVehicleOwnerClientId] = useState<string | undefined>();
 
   const filteredClients = useMemo(
     () => clientsWithVehicles.filter((client) => matchesClientSearch(client, searchTerm)),
     [clientsWithVehicles, searchTerm]
   );
 
-  const selectedClient =
-    clientsWithVehicles.find((client) => client.id === selectedClientId) ?? filteredClients[0];
+  const selectedClient = clientsWithVehicles.find((client) => client.id === selectedClientId);
 
   useEffect(() => {
     if (!filteredClients.length) {
@@ -37,8 +42,11 @@ export function ClientsPage() {
 
     const stillExists = filteredClients.some((client) => client.id === selectedClientId);
 
-    if (!stillExists) {
-      setSelectedClientId(filteredClients[0].id);
+    if (!stillExists && selectedClientId) {
+      setSelectedClientId(undefined);
+      if (panelMode === "detail") {
+        setEditingClient(undefined);
+      }
     }
   }, [filteredClients, panelMode, selectedClientId]);
 
@@ -57,6 +65,13 @@ export function ClientsPage() {
     setSelectedClientId(client.id);
     setEditingClient(client);
     setPanelMode("edit");
+  }
+
+  function handleAddVehicle(client: Client) {
+    setVehicleOwnerClientId(client.id);
+    setSelectedClientId(undefined);
+    setEditingClient(undefined);
+    setPanelMode("detail");
   }
 
   function handleCreateSubmit(values: ClientFormValues) {
@@ -87,6 +102,27 @@ export function ClientsPage() {
     setPanelMode("detail");
   }
 
+  function handleCreateVehicleSubmit(values: VehicleFormValues) {
+    const nextVehicle = createVehicle(values);
+    setVehicleOwnerClientId(undefined);
+    setSelectedClientId(nextVehicle.clientId);
+    setPanelMode("detail");
+  }
+
+  function handleCancelVehicleForm() {
+    setSelectedClientId(vehicleOwnerClientId);
+    setVehicleOwnerClientId(undefined);
+    setPanelMode("detail");
+  }
+
+  function handleCloseDetail() {
+    setSelectedClientId(undefined);
+    setEditingClient(undefined);
+    setPanelMode("detail");
+  }
+
+  const vehicleOwnerClient = clientsWithVehicles.find((client) => client.id === vehicleOwnerClientId);
+
   return (
     <PageShell
       eyebrow="Clientes"
@@ -101,7 +137,7 @@ export function ClientsPage() {
         },
       ]}
     >
-      <div className="grid gap-6 xl:grid-cols-[minmax(340px,420px)_minmax(0,1fr)]">
+      <div className="max-w-[420px]">
         <ClientsList
           clients={filteredClients}
           searchTerm={searchTerm}
@@ -110,28 +146,47 @@ export function ClientsPage() {
           onSelectClient={handleSelectClient}
           onCreateClient={handleCreateClient}
         />
+      </div>
 
-        {panelMode === "create" ? (
+      {panelMode === "detail" && selectedClient ? (
+        <ModalShell onClose={handleCloseDetail} maxWidthClassName="max-w-4xl">
+          <ClientDetailCard
+            client={selectedClient}
+            onEditClient={handleEditClient}
+            onAddVehicle={handleAddVehicle}
+            onCreateClient={handleCreateClient}
+          />
+        </ModalShell>
+      ) : null}
+
+      {panelMode === "create" ? (
+        <ModalShell onClose={handleCancelForm}>
           <ClientForm mode="create" onCancel={handleCancelForm} onSubmit={handleCreateSubmit} />
-        ) : null}
+        </ModalShell>
+      ) : null}
 
-        {panelMode === "edit" ? (
+      {panelMode === "edit" ? (
+        <ModalShell onClose={handleCancelForm}>
           <ClientForm
             mode="edit"
             client={editingClient}
             onCancel={handleCancelForm}
             onSubmit={handleEditSubmit}
           />
-        ) : null}
+        </ModalShell>
+      ) : null}
 
-        {panelMode === "detail" ? (
-          <ClientDetailCard
-            client={selectedClient}
-            onEditClient={handleEditClient}
-            onCreateClient={handleCreateClient}
+      {vehicleOwnerClient ? (
+        <ModalShell onClose={handleCancelVehicleForm}>
+          <VehicleForm
+            mode="create"
+            clients={[vehicleOwnerClient]}
+            forcedClient={vehicleOwnerClient}
+            onCancel={handleCancelVehicleForm}
+            onSubmit={handleCreateVehicleSubmit}
           />
-        ) : null}
-      </div>
+        </ModalShell>
+      ) : null}
     </PageShell>
   );
 }

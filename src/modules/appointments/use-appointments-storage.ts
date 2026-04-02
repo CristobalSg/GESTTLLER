@@ -3,6 +3,13 @@ import { useEffect, useMemo, useState } from "react";
 import { appointmentsMock, clientsMock, vehiclesMock } from "@/data/mocks";
 import type { Appointment, AppointmentStatus, Client, Vehicle } from "@/types";
 import {
+  APPOINTMENTS_STORAGE_KEY,
+  CLIENTS_STORAGE_KEY,
+  VEHICLES_STORAGE_KEY,
+  notifyStorageSync,
+  subscribeToStorageKey,
+} from "@/utils/storage-sync";
+import {
   getClientDisplayName,
   getVehicleDisplayName,
   normalizeText,
@@ -10,10 +17,6 @@ import {
 } from "@/utils/entity-display";
 
 import type { AppointmentFormValues } from "./appointment-form.types";
-
-const APPOINTMENTS_STORAGE_KEY = "gesttller:appointments:v1";
-const CLIENTS_STORAGE_KEY = "gesttller:clients:v1";
-const VEHICLES_STORAGE_KEY = "gesttller:vehicles:v1";
 
 export type AppointmentWithRelations = Appointment & {
   client?: Client;
@@ -182,24 +185,39 @@ export function useAppointmentsStorage() {
 
   useEffect(() => {
     window.localStorage.setItem(APPOINTMENTS_STORAGE_KEY, JSON.stringify(appointments));
+    notifyStorageSync(APPOINTMENTS_STORAGE_KEY);
   }, [appointments]);
 
   useEffect(() => {
-    const syncRelations = (event: StorageEvent) => {
-      if (event.key === CLIENTS_STORAGE_KEY) {
-        setClients(readStoredClients());
-      }
+    window.localStorage.setItem(CLIENTS_STORAGE_KEY, JSON.stringify(clients));
+    notifyStorageSync(CLIENTS_STORAGE_KEY);
+  }, [clients]);
 
-      if (event.key === VEHICLES_STORAGE_KEY) {
-        setVehicles(readStoredVehicles());
-      }
-    };
+  useEffect(() => {
+    window.localStorage.setItem(VEHICLES_STORAGE_KEY, JSON.stringify(vehicles));
+    notifyStorageSync(VEHICLES_STORAGE_KEY);
+  }, [vehicles]);
 
-    window.addEventListener("storage", syncRelations);
+  useEffect(() => {
+    const unsubscribeAppointments = subscribeToStorageKey(APPOINTMENTS_STORAGE_KEY, () => {
+      setAppointments(readStoredAppointments());
+    });
+    const unsubscribeClients = subscribeToStorageKey(CLIENTS_STORAGE_KEY, () => {
+      setClients(readStoredClients());
+    });
+    const unsubscribeVehicles = subscribeToStorageKey(VEHICLES_STORAGE_KEY, () => {
+      setVehicles(readStoredVehicles());
+    });
+
+    setAppointments(readStoredAppointments());
     setClients(readStoredClients());
     setVehicles(readStoredVehicles());
 
-    return () => window.removeEventListener("storage", syncRelations);
+    return () => {
+      unsubscribeAppointments();
+      unsubscribeClients();
+      unsubscribeVehicles();
+    };
   }, []);
 
   const appointmentsWithRelations = useMemo<AppointmentWithRelations[]>(

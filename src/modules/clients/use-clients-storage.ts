@@ -2,11 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 
 import { clientsMock, vehiclesMock } from "@/data/mocks";
 import type { Client, Vehicle } from "@/types";
+import {
+  CLIENTS_STORAGE_KEY,
+  VEHICLES_STORAGE_KEY,
+  notifyStorageSync,
+  subscribeToStorageKey,
+} from "@/utils/storage-sync";
 
 import type { ClientFormValues } from "./client-form.types";
-
-const CLIENTS_STORAGE_KEY = "gesttller:clients:v1";
-const VEHICLES_STORAGE_KEY = "gesttller:vehicles:v1";
 
 export type ClientWithVehicles = Client & {
   vehicles: Vehicle[];
@@ -80,6 +83,7 @@ function buildClientPayload(values: ClientFormValues, currentClient?: Client): C
     address: buildClientAddress(values),
     notes: values.notes.trim(),
     preferredContact: values.preferredContact,
+    isProvisional: currentClient ? false : undefined,
     createdAt: currentClient?.createdAt ?? now,
   };
 }
@@ -90,19 +94,24 @@ export function useClientsStorage() {
 
   useEffect(() => {
     window.localStorage.setItem(CLIENTS_STORAGE_KEY, JSON.stringify(clients));
+    notifyStorageSync(CLIENTS_STORAGE_KEY);
   }, [clients]);
 
   useEffect(() => {
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key === VEHICLES_STORAGE_KEY) {
-        setVehicles(readStoredVehicles());
-      }
-    };
+    const unsubscribeClients = subscribeToStorageKey(CLIENTS_STORAGE_KEY, () => {
+      setClients(readStoredClients());
+    });
+    const unsubscribeVehicles = subscribeToStorageKey(VEHICLES_STORAGE_KEY, () => {
+      setVehicles(readStoredVehicles());
+    });
 
-    window.addEventListener("storage", handleStorage);
+    setClients(readStoredClients());
     setVehicles(readStoredVehicles());
 
-    return () => window.removeEventListener("storage", handleStorage);
+    return () => {
+      unsubscribeClients();
+      unsubscribeVehicles();
+    };
   }, []);
 
   const clientsWithVehicles = useMemo<ClientWithVehicles[]>(
@@ -123,7 +132,13 @@ export function useClientsStorage() {
   }
 
   function updateClient(clientId: string, values: ClientFormValues) {
-    let updatedClient: Client | undefined;
+    const currentClient = clients.find((client) => client.id === clientId);
+
+    if (!currentClient) {
+      return undefined;
+    }
+
+    const updatedClient = buildClientPayload(values, currentClient);
 
     setClients((currentClients) =>
       currentClients.map((client) => {
@@ -131,7 +146,6 @@ export function useClientsStorage() {
           return client;
         }
 
-        updatedClient = buildClientPayload(values, client);
         return updatedClient;
       })
     );

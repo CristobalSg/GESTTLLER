@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
+import { ModalShell } from "../../components/shared/modal-shell";
 import { PageShell } from "../../components/shared/page-shell";
 import type { Vehicle } from "../../types";
 import { VehicleDetailCard } from "./vehicle-detail-card";
@@ -14,7 +15,7 @@ type PanelMode = "detail" | "create" | "edit";
 export function VehiclesPage() {
   const { clients, vehiclesWithRelations, createVehicle, updateVehicle } = useVehiclesStorage();
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedVehicleId, setSelectedVehicleId] = useState<string | undefined>(vehiclesWithRelations[0]?.id);
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string | undefined>();
   const [panelMode, setPanelMode] = useState<PanelMode>("detail");
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | undefined>();
 
@@ -23,8 +24,7 @@ export function VehiclesPage() {
     [vehiclesWithRelations, searchTerm]
   );
 
-  const selectedVehicle =
-    vehiclesWithRelations.find((vehicle) => vehicle.id === selectedVehicleId) ?? filteredVehicles[0];
+  const selectedVehicle = vehiclesWithRelations.find((vehicle) => vehicle.id === selectedVehicleId);
 
   useEffect(() => {
     if (!filteredVehicles.length) {
@@ -37,8 +37,11 @@ export function VehiclesPage() {
 
     const stillExists = filteredVehicles.some((vehicle) => vehicle.id === selectedVehicleId);
 
-    if (!stillExists) {
-      setSelectedVehicleId(filteredVehicles[0].id);
+    if (!stillExists && selectedVehicleId) {
+      setSelectedVehicleId(undefined);
+      if (panelMode === "detail") {
+        setEditingVehicle(undefined);
+      }
     }
   }, [filteredVehicles, panelMode, selectedVehicleId]);
 
@@ -87,6 +90,12 @@ export function VehiclesPage() {
     setPanelMode("detail");
   }
 
+  function handleCloseDetail() {
+    setSelectedVehicleId(undefined);
+    setEditingVehicle(undefined);
+    setPanelMode("detail");
+  }
+
   return (
     <PageShell
       eyebrow="Vehículos"
@@ -98,7 +107,7 @@ export function VehiclesPage() {
         { label: "Con historial básico", value: String(vehiclesWithRelations.filter((vehicle) => vehicle.appointments.length > 0).length) },
       ]}
     >
-      <div className="grid gap-6 xl:grid-cols-[minmax(340px,420px)_minmax(0,1fr)]">
+      <div className="max-w-[420px]">
         <VehiclesList
           vehicles={filteredVehicles}
           searchTerm={searchTerm}
@@ -107,12 +116,26 @@ export function VehiclesPage() {
           onSelectVehicle={handleSelectVehicle}
           onCreateVehicle={handleCreateVehicle}
         />
+      </div>
 
-        {panelMode === "create" ? (
+      {panelMode === "detail" && selectedVehicle ? (
+        <ModalShell onClose={handleCloseDetail} maxWidthClassName="max-w-4xl">
+          <VehicleDetailCard
+            vehicle={selectedVehicle}
+            onEditVehicle={handleEditVehicle}
+            onCreateVehicle={handleCreateVehicle}
+          />
+        </ModalShell>
+      ) : null}
+
+      {panelMode === "create" ? (
+        <ModalShell onClose={handleCancelForm}>
           <VehicleForm mode="create" clients={clients} onCancel={handleCancelForm} onSubmit={handleCreateSubmit} />
-        ) : null}
+        </ModalShell>
+      ) : null}
 
-        {panelMode === "edit" ? (
+      {panelMode === "edit" ? (
+        <ModalShell onClose={handleCancelForm}>
           <VehicleForm
             mode="edit"
             clients={clients}
@@ -120,16 +143,8 @@ export function VehiclesPage() {
             onCancel={handleCancelForm}
             onSubmit={handleEditSubmit}
           />
-        ) : null}
-
-        {panelMode === "detail" ? (
-          <VehicleDetailCard
-            vehicle={selectedVehicle}
-            onEditVehicle={handleEditVehicle}
-            onCreateVehicle={handleCreateVehicle}
-          />
-        ) : null}
-      </div>
+        </ModalShell>
+      ) : null}
     </PageShell>
   );
 }
