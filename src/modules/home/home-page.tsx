@@ -1,8 +1,10 @@
 import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { getClientDisplayName, getVehicleDisplayName } from "@/utils/entity-display";
 
 import { ModalShell } from "../../components/shared/modal-shell";
+import { navigateTo } from "../../app/routes/navigation";
 import { useAppointmentsStorage } from "../appointments/use-appointments-storage";
 
 function formatMonthLabel(date: Date) {
@@ -92,6 +94,54 @@ function getStatusBadge(status: string) {
   }
 }
 
+function QuickAccessIcon({ label }: { label: (typeof quickAccessLinks)[number]["label"] }) {
+  if (label === "Presupuestos") {
+    return (
+      <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8">
+        <path d="M12 3v18" strokeLinecap="round" />
+        <path d="M16.5 7.5c0-1.7-1.8-3-4.5-3S7.5 5.8 7.5 7.5 9.3 10.5 12 10.5s4.5 1.3 4.5 3-1.8 3-4.5 3-4.5-1.3-4.5-3" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (label === "Órdenes") {
+    return (
+      <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8">
+        <path d="M8 7h10" strokeLinecap="round" />
+        <path d="M8 12h10" strokeLinecap="round" />
+        <path d="M8 17h10" strokeLinecap="round" />
+        <path d="M5 7h.01M5 12h.01M5 17h.01" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (label === "Ingreso") {
+    return (
+      <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8">
+        <path d="M12 4v11" strokeLinecap="round" />
+        <path d="m8.5 11.5 3.5 3.5 3.5-3.5" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M5 19h14" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M4 19h16" strokeLinecap="round" />
+      <path d="M7 16V9" strokeLinecap="round" />
+      <path d="M12 16V5" strokeLinecap="round" />
+      <path d="M17 16v-4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+const quickAccessLinks = [
+  { label: "Presupuestos", path: "/presupuestos" },
+  { label: "Órdenes", path: "/ordenes-de-trabajo" },
+  { label: "Ingreso", path: "/ingreso" },
+  { label: "Dashboard", path: "/dashboard" },
+] as const;
+
 export function HomePage() {
   const { appointmentsWithRelations } = useAppointmentsStorage();
   const todayKey = getTodayKey();
@@ -99,6 +149,7 @@ export function HomePage() {
   const [viewMode, setViewMode] = useState<"month" | "week">("month");
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
   const [isMonthMenuOpen, setIsMonthMenuOpen] = useState(false);
+  const [isQuickAccessOpen, setIsQuickAccessOpen] = useState(false);
   const [activeAppointmentId, setActiveAppointmentId] = useState<string | undefined>();
   const [visibleMonth, setVisibleMonth] = useState(() => {
     const [year, month] = todayKey.split("-").map(Number);
@@ -203,6 +254,15 @@ export function HomePage() {
     if (getMonthKey(nextVisibleMonth) !== getMonthKey(visibleMonth)) {
       setVisibleMonth(nextVisibleMonth);
     }
+  }
+
+  function handleOpenQuickAccess() {
+    setIsQuickAccessOpen(true);
+  }
+
+  function handleNavigateFromQuickAccess(path: string) {
+    setIsQuickAccessOpen(false);
+    navigateTo(path);
   }
 
   return (
@@ -476,6 +536,21 @@ export function HomePage() {
         </div>
       </footer>
 
+      <button
+        type="button"
+        onClick={handleOpenQuickAccess}
+        className="quick-access-fab fixed bottom-6 right-4 z-20 inline-flex h-14 w-14 items-center justify-center rounded-[20px] bg-stone-950 text-white shadow-[0_18px_40px_rgba(28,25,23,0.3)] transition hover:bg-stone-800 sm:bottom-8 sm:right-6"
+        aria-label="Abrir atajos"
+      >
+        <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.9">
+          <path d="M5 7h6" strokeLinecap="round" />
+          <path d="M5 12h10" strokeLinecap="round" />
+          <path d="M5 17h8" strokeLinecap="round" />
+          <path d="M16.5 6.5h2v2" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M19 5l-4.5 4.5" strokeLinecap="round" />
+        </svg>
+      </button>
+
       {activeAppointment ? (
         <ModalShell onClose={() => setActiveAppointmentId(undefined)}>
           <article className="rounded-[28px] border border-stone-200 bg-white p-6 shadow-[0_24px_70px_rgba(17,24,39,0.18)] sm:p-7">
@@ -537,6 +612,46 @@ export function HomePage() {
           </article>
         </ModalShell>
       ) : null}
+
+      {isQuickAccessOpen && typeof document !== "undefined"
+        ? createPortal(
+            <>
+              <button
+                type="button"
+                aria-label="Cerrar atajos"
+                onClick={() => setIsQuickAccessOpen(false)}
+                className="fixed inset-0 z-30 bg-stone-950/10"
+              />
+
+              <div className="quick-access-panel fixed bottom-[5.5rem] right-4 z-40 w-[min(19rem,calc(100vw-2rem))] rounded-[28px] border border-stone-200 bg-white p-3 shadow-[0_24px_70px_rgba(17,24,39,0.18)] sm:bottom-[6.5rem] sm:right-6">
+                <div className="grid grid-cols-2 gap-3">
+                  {quickAccessLinks.map((link, index) => (
+                    <button
+                      key={link.path}
+                      type="button"
+                      onClick={() => handleNavigateFromQuickAccess(link.path)}
+                      className="rounded-[22px] border border-stone-800 bg-stone-900 px-3 py-4 text-center text-white shadow-[0_16px_40px_rgba(28,25,23,0.18)] transition hover:-translate-y-0.5 hover:bg-stone-800"
+                    >
+                      <span
+                        className="quick-access-item-content mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white"
+                        style={{ animationDelay: `${150 + index * 55}ms` }}
+                      >
+                        <QuickAccessIcon label={link.label} />
+                      </span>
+                      <span
+                        className="quick-access-item-content mt-2 block text-sm font-medium text-white"
+                        style={{ animationDelay: `${190 + index * 55}ms` }}
+                      >
+                        {link.label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>,
+            document.body
+          )
+        : null}
 
     </section>
   );
